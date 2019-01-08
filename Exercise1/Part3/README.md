@@ -16,43 +16,42 @@ When answering the questions, remember to use all the resources at your disposal
  
 
  ### Why have machines become increasingly multicore in the past decade?
- More software programs are multithreaded. The power consumption becomes smaller, the cores take less space etc.
+>More software programs are multithreaded. The power consumption becomes smaller, the cores take less space etc.
  
 
  ### What kinds of problems motivates the need for concurrent execution?
  (Or phrased differently: What problems do concurrency help in solving?)
- Concurrency is the ability for a part of an algorithm or a problem to be executed in partial order, without affecting
+>Concurrency is the ability for a part of an algorithm or a problem to be executed in partial order, without affecting
  the final outcome. Concurrency allows for parallell execution in multiprocessor or multicore systems.
  
 
  ### Does creating concurrent programs make the programmer's life easier? Harder? Maybe both?
- (Come back to this after you have worked on part 4 of this exercise)
- If handled correctly, concurrent programs are an advantage if we have several cores available.
+>If handled correctly, concurrent programs are an advantage if we have several cores available.
  It may also make a programmer's life a living hell...
  
 
  ### What are the differences between processes, threads, green threads, and coroutines?
- Processes run in separate memory spaces, while threads run in a shared memory space.
+>Processes run in separate memory spaces, while threads run in a shared memory space.
 
- A green thread is scheduled by a virtual machine.
+>A green thread is scheduled by a virtual machine.
 
- A coroutine is a control structure where the flow control is passed between two different routines without returning.
+>A coroutine is a control structure where the flow control is passed between two different routines without returning.
  Only one coroutine is running at any given time, even in multicore systems.
  
 
  ### Which one of these do `pthread_create()` (C/POSIX), `threading.Thread()` (Python), `go` (Go) create?
- They create a new thread in C and Python, and a goroutine (lightweight thread -- requires less processing time)
+>They create a new thread in C and Python, and a goroutine (lightweight thread -- requires less processing time)
  in Go, respectively.
  
 
  ### How does pythons Global Interpreter Lock (GIL) influence the way a python Thread behaves?
- GIL is a Mutex (Mutual Exclusion) that protects access to objects, and thus preventing multiple threads from
+>GIL is a Mutex (Mutual Exclusion) that protects access to objects, and thus preventing multiple threads from
  executing Python bytecodes at once. In practice preventing threads from running in parallell in Python.
  
 
  ### With this in mind: What is the workaround for the GIL (Hint: it's another module)?
- Using the threading module from Python
+>Using the threading module from Python
  
 
  ### What does `func GOMAXPROCS(n int) int` change? 
- GOMAXPROCS limits the number of system threads that can execute Go code simultaneously.
+>GOMAXPROCS limits the number of system threads that can execute Go code simultaneously.
