@@ -25,13 +25,19 @@ func decrementing() {
 }
 
 func main() {
-    runtime.GOMAXPROCS(runtime.NumCPU())    // I guess this is a hint to what GOMAXPROCS does...
-	                                    // Try doing the exercise both with and without it!
+    runtime.GOMAXPROCS(runtime.NumCPU())
 
-    // TODO: Spawn both functions as goroutines
+    /*  
+        GOMAXPROCS limits the number of system threads that can execute Go code simultaneously
+
+        If the argument to GOMAXPROCS is set to 1, we get the desired behaviour (i = 0) because
+        one thread finishes completely before the nest one can start.
+        If it's different from 1, we might get 0, positive, or negative numbers.
+    */
+
+    go incrementing()
+    go decrementing()
 	
-    // We have no way to wait for the completion of a goroutine (without additional syncronization of some sort)
-    // We'll come back to using channels in Exercise 2. For now: Sleep.
     time.Sleep(100*time.Millisecond)
     Println("The magic number is:", i)
 }
