@@ -3,8 +3,8 @@
 package main
 
 import (
-    . "fmt"
-    "runtime"
+	. "fmt"
+	"runtime"
 )
 
 // Control signals
@@ -19,24 +19,36 @@ func number_server(add_number <-chan int, control <-chan int, number chan<- int)
 	// This for-select pattern is one you will become familiar with if you're using go "correctly".
 	for {
 		select {
-			// TODO: receive different messages and handle them correctly
-			// You will at least need to update the number and handle control signals.
+		// TODO: receive different messages and handle them correctly
+		// You will at least need to update the number and handle control signals.
+		case num := <-add_number:
+			i += num
+		case n := <-control:
+			if n == GetNumber {
+				number <- i
+			} else if n == Exit {
+				return
+			}
 		}
 	}
 }
 
-func incrementing(add_number chan<-int, finished chan<- bool) {
-	for j := 0; j<1000000; j++ {
+func incrementing(add_number chan<- int, finished chan<- bool) {
+	for j := 0; j < 1000000; j++ {
 		add_number <- 1
 	}
 	//TODO: signal that the goroutine is finished
+	finished <- true
+	return
 }
 
 func decrementing(add_number chan<- int, finished chan<- bool) {
-	for j := 0; j<1000000; j++ {
+	for j := 0; j < 1000000; j++ {
 		add_number <- -1
 	}
 	//TODO: signal that the goroutine is finished
+	finished <- true
+	return
 }
 
 func main() {
@@ -45,11 +57,27 @@ func main() {
 	// TODO: Construct the required channels
 	// Think about wether the receptions of the number should be unbuffered, or buffered with a fixed queue size.
 
+	sum := 0
+
+	addNum := make(chan int)
+	finished := make(chan bool)
+	control := make(chan int)
+	number := make(chan int)
+
 	// TODO: Spawn the required goroutines
+	go incrementing(addNum, finished)
+	go decrementing(addNum, finished)
+	go number_server(addNum, control, number)
 
 	// TODO: block on finished from both "worker" goroutines
 
-	control<-GetNumber
-	Println("The magic number is:", <- number)
-	control<-Exit
+	for sum < 2 {
+		if <-finished {
+			sum++
+		}
+	}
+
+	control <- GetNumber
+	Println("The magic number is:", <-number)
+	control <- Exit
 }

@@ -10,7 +10,7 @@ void* incrementingThreadFunction(){
     for (int j = 0; j < 1000000; j++) {
 	    // TODO: sync access to i
         sem_wait(&semaphore);
-	    i++;
+        i++;
         sem_post(&semaphore);
     }
     return NULL;
@@ -20,7 +20,7 @@ void* decrementingThreadFunction(){
     for (int j = 0; j < 1000001; j++) {
 	    // TODO: sync access to i
 	    sem_wait(&semaphore);
-	    i--;
+        i--;
         sem_post(&semaphore);
     }
     return NULL;
