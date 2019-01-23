@@ -44,3 +44,10 @@ defmodule PrivateGreeter do
     defp phrase("no"), do: "Hei, "
     defp phrase("es"), do: "Hola, "
 end
+
+
+# Pipe operator - easier function calls
+# foo(bar(baz(new_func(other_func()))))
+# other_func() |> new_func() |> baz() |> bar() |> foo()
+"Elixir rocks" |> String.upcase() |> String.split()     # This yields ["ELIXIR", "ROCKS"]
+
