@@ -6,4 +6,6 @@ end
 
 # List
 list = [3.1415, :pie, "Apple"]
-["Test"] ++ list
+["Test"] ++ list        # ["Test", 3.1415, :pie, "Apple"]
+
+list ++ ["Test"]        # [3.1415, :pie, "Apple", "Test"]
