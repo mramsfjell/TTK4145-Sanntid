@@ -33,6 +33,8 @@ Controllerne sender ut informasjon med et gitt intervall, f.eks. hvert halve sek
 En ordrematrise med leserettigheter blir sendt fra alle til alle, men hver controller kan i utgangspunktet bare skrive over sine egne ordre.
 - Her vil det være unntak, bl.a. ved feil på en heis.
 
+![Forsøk på kommunikasjon](https://github.com/simenkrantz/TTK4145-Sanntid/blob/master/Exercise4/communication_draft.png)
+
 ## Nettverksfeil eller powerloss
 Ved nettverksbrudd vil soloheisen ta seg av alle sine ordre, både intern- og eksternordre. Da vil de to heisene som fortsatt snakker sammen redistribuere soloheisens eksternordre, kan da oppleve at samme ordre blir ekspedert to ganger. Vi anser det som et nødvendig onde. Når nettverket er oppe og går igjen, vil soloheisen pushe sin ordreliste til de to andre, og be om å få oppdatert de to andre listene hos seg selv.
 
