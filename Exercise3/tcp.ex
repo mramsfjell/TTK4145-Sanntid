@@ -48,11 +48,12 @@ defmodule TcpClient do
   @local_host {192, 168, 1, 6}
   @default_port 20_000
   def send(address,port,message) do
-    {:ok,socket} = :gen_tcp.connect(address, port, [active: false,packet_size: 1024])
+    {:ok,socket} = :gen_tcp.connect(address, port, [:binary, active: false,packet_size: 1024])
     :gen_tcp.send(socket, message)
-    a = :gen_tcp.recv(socket,0)
+    :gen_tcp.recv(socket,0) |> to_string |> IO.puts
+    :gen_tcp.send(socket, message)
+    :gen_tcp.recv(socket,0) |> to_string |> IO.puts
     :gen_tcp.close(socket)
-    a
   end
 
   def send(message) do
