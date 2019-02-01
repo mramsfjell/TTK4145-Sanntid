@@ -1,4 +1,4 @@
-# Designnotater
+# Designnotater - førsteutkast
 ## Moduler
 - Controller:
     - Snakker med hverandre, sin egen respektive heis, setter hall call-knapper, cab call-knapper
@@ -17,8 +17,8 @@
 
 - Orders
 
-## Ordrebehandling
-
-
 ## Kommunikasjon
-Alle-til-alle-kommunikasjon. Alle controllerne vet hva de andre har av ordre, inkludert internordre.
+Controllerne sender ut informasjon med et gitt intervall, f.eks. hvert halve sekund e.l. Alle controllerne vet hva de andre har av ordre, inkludert internordre -- dette for 
+
+## Nettverksfeil eller powerloss
+Ved nettverksfeil, vil soloheisen slette alle 
