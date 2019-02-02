@@ -8,10 +8,11 @@
     - Opererer med en (per nå ubestemt) kostfunksjon:
         - Ved en ny bestilling fra hall call-panel `i`, vil controller `i` kalkulerer sin egen kostfunksjon, og samtidig få kostfunksjon fra de `0-n` andre controllerne. Vil på det grunnlaget bestemme hvem som til slutt får hall call-bestillingen (eksternordren). Dette vil også fungere i spesialtilfellet ved nettverksbrudd og soloheis.
         - Ved cab call-bestilling (internordre), vil alle andre heiser ha uendelig kost.
-    - 
+    - Kommuniserer med alle de tre andre modulene.
     
 - `Lift`: 
     - Tar seg kun av etasjeindikatorer, ikke ordrelys etc.
+    - Kan være aktuelt at Lift kan kommunisere direkte med Orders, det er noe vi må ta stilling til.
     - FSM:
         - `MOVING`-staten har en `bool dir`-variabel, som husker siste retning heisen hadde.
         - Hvis heisen ikke har noen ordre, hverken cab eller hall call, står den i `IDLE` og venter.
@@ -32,13 +33,14 @@ Controllerne sender ut informasjon med et gitt intervall, f.eks. hvert halve sek
 
 En ordrematrise med leserettigheter blir sendt fra alle til alle, men hver controller kan i utgangspunktet bare skrive over sine egne ordre.
 - Her vil det være unntak, bl.a. ved feil på en heis.
+- Skalerbarhet med tanke på antall kommunikasjonslinjer er ikke veldig bra, faktoriell, men med tanke på prosjektets størrelse (`n < 4`heiser) det er overkommelig, kontra en fastsatt men flyktig master.
 
 ![Forsøk på kommunikasjon](https://github.com/simenkrantz/TTK4145-Sanntid/blob/master/Exercise4/communication_draft.png)
 
 ## Nettverksfeil eller powerloss
 Ved nettverksbrudd vil soloheisen ta seg av alle sine ordre, både intern- og eksternordre. Da vil de to heisene som fortsatt snakker sammen redistribuere soloheisens eksternordre, kan da oppleve at samme ordre blir ekspedert to ganger. Vi anser det som et nødvendig onde. Når nettverket er oppe og går igjen, vil soloheisen pushe sin ordreliste til de to andre, og be om å få oppdatert de to andre listene hos seg selv.
 
-Ved powerloss vil den respektive heisen gå tilbake til `INIT`. Denne heisen vil da spørre om å få sin egen ordreliste fra de to andre, og til forskjell fra oppstart vil det mest sannsynlig komme en ikke-tom liste i retur.
+Ved powerloss vil den respektive heisen gå tilbake til `INIT`. Denne heisen vil da spørre om å få sin egen ordreliste fra de to andre, og til forskjell fra oppstart vil det mest sannsynlig komme en ikke-tom liste i retur. Om den går innom `INIT`-staten underveis i programmet er en måte for soloheisen å skille mellom nettverksfeil og powerloss, selv om de to casene vil være like for de to andre -- ikke mulig å få kontakt med tredje heisen.
 
 
 ## Config-fil og oppstart
