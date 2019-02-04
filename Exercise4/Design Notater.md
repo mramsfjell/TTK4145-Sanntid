@@ -3,15 +3,22 @@
 **_Legg gjerne til manglende informasjon_**
 
 ## Moduler
+**_Generelt gjelder det å dele opp i så mange små prosesser som mulig_**
+
 - `Controller`:
     - Snakker med evt. andre controllere, og tar hånd om bestillinger -- hvilken heis skal ta hvilken ordre.
     - Opererer med en (per nå ubestemt) kostfunksjon:
         - Ved en ny bestilling fra hall call-panel `i`, vil controller `i` kalkulerer sin egen kostfunksjon, og samtidig få kostfunksjon fra de `0-n` andre controllerne. Vil på det grunnlaget bestemme hvem som til slutt får hall call-bestillingen (eksternordren). Dette vil også fungere i spesialtilfellet ved nettverksbrudd og soloheis.
         - Ved cab call-bestilling (internordre), vil alle andre heiser ha uendelig kost.
-    - Kommuniserer med alle de tre andre modulene.
+    - Kommuniserer med alle de tre andre modulene, både  `Lift`, `Buttons` og `Orders`.
     - FSM `Controller`:
+        - `INIT` må lese config-fil, klargjøre sin egen IP-adresse, nullstille ordrematrise o.l.
+        - `INIT` bør ha en `timer`-variabel på 5 sec, som til slutt vil avgjøre om neste state er `NO_CONNECT` eller `OPERATING`.
+        - `NO_CONNECT` har UDP_Listen, UDP_Broadcast, ellers kjøre soloheis.
+        - I `SYNC_CONN`-staten kan controlleren lytte etter nye ordre uten å betjene dem, ellers må den her pushe egne ordre til de andre og pulle de andres ordre -- refreshe og flette ordrematrise.
+        - `OPERATING` vil ta seg av vanlig drift.
 
-    ![FSM Controller Draft](https://github.com/simenkrantz/TTK4145-Sanntid/tree/master/Exercise4/controller_fsm.png)
+    ![FSM Controller Draft](https://github.com/simenkrantz/TTK4145-Sanntid/blob/master/Exercise4/controller_fsm.png)
 
 
     
@@ -24,6 +31,7 @@
         - Fordel å vite hvor man går fra `INIT`og `DOOR_OPEN`, det er grunnen til at vi ikke har direkte transition fra `MOVING`til `DOOR_OPEN`.
 
     ![FSM Lift Draft](https://github.com/simenkrantz/TTK4145-Sanntid/blob/master/Exercise4/fsm_draft.png)
+
 
 - `Buttons`:
     - Snakker med `Lift`-modulen. Tar seg av registrering av ordre og lys i ordreknapper, både cab og hall. Controllerne kan på denne måten dobbeltsjekke at en ordre har blitt bekreftet som en bestilling.
@@ -55,3 +63,11 @@ Ved oppstart vil hver heis be om å få oppdatert sin egen ordreliste. Hvis ordr
 
 Config er noe vi må se mer på. Antar at denne ikke er korrupt, og inneholder riktig informasjon.
 
+
+## Use Case 1
+**Trykk på 2.etg UP-knapp ved heis 3**
+1. Knapp gir beskjed til sin respektive controller, i dette tilfellet `C3`, _Jeg er høy_
+2. `C3` spør om svar på kostfunksjon for denne ordren fra `C1` og `C2`
+3. Etter reply: `C3` gir beskjed om at f.eks. `C2` får denne ordren
+4. Bestilling legges inn i ordrematrisen (notat: Trengs en _ack_, timer e.l.?)
+5. Alle hall lights 2. etg UP skrus på, hos alle heiser som har fått ordre. Hvis vi har en soloheis, vil ikke denne skru på lyset før den evt. er tilbake på nettverket
