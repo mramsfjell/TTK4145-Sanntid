@@ -9,16 +9,21 @@
         - Ved en ny bestilling fra hall call-panel `i`, vil controller `i` kalkulerer sin egen kostfunksjon, og samtidig få kostfunksjon fra de `0-n` andre controllerne. Vil på det grunnlaget bestemme hvem som til slutt får hall call-bestillingen (eksternordren). Dette vil også fungere i spesialtilfellet ved nettverksbrudd og soloheis.
         - Ved cab call-bestilling (internordre), vil alle andre heiser ha uendelig kost.
     - Kommuniserer med alle de tre andre modulene.
+    - FSM `Controller`:
+
+    ![FSM Controller Draft](https://github.com/simenkrantz/TTK4145-Sanntid/tree/master/Exercise4/controller_fsm.png)
+
+
     
 - `Lift`: 
     - Tar seg kun av etasjeindikatorer, ikke ordrelys etc.
-    - Kan være aktuelt at Lift kan kommunisere direkte med Orders, det er noe vi må ta stilling til.
-    - FSM:
+    - `Lift` snakket kun med controller, mer modulert hvis den _ikke_ snakker med `Orders`
+    - FSM `Lift`:
         - `MOVING`-staten har en `bool dir`-variabel, som husker siste retning heisen hadde.
         - Hvis heisen ikke har noen ordre, hverken cab eller hall call, står den i `IDLE` og venter.
         - Fordel å vite hvor man går fra `INIT`og `DOOR_OPEN`, det er grunnen til at vi ikke har direkte transition fra `MOVING`til `DOOR_OPEN`.
 
-    ![FSM Draft](https://github.com/simenkrantz/TTK4145-Sanntid/blob/master/Exercise4/fsm_draft.png)
+    ![FSM Lift Draft](https://github.com/simenkrantz/TTK4145-Sanntid/blob/master/Exercise4/fsm_draft.png)
 
 - `Buttons`:
     - Snakker med `Lift`-modulen. Tar seg av registrering av ordre og lys i ordreknapper, både cab og hall. Controllerne kan på denne måten dobbeltsjekke at en ordre har blitt bekreftet som en bestilling.
@@ -30,6 +35,8 @@
 
 ## Kommunikasjon
 Controllerne sender ut informasjon med et gitt intervall, f.eks. hvert halve sekund e.l. Alle controllerne vet hva de andre har av ordre, inkludert internordre -- dette som backup ved nettverksfeil eller powerloss.
+
+**25 % packet loss skal kunne håndteres av systemet!**
 
 En ordrematrise med leserettigheter blir sendt fra alle til alle, men hver controller kan i utgangspunktet bare skrive over sine egne ordre.
 - Her vil det være unntak, bl.a. ved feil på en heis.
