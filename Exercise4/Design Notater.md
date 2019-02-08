@@ -2,6 +2,21 @@
 
 **_Legg gjerne til manglende informasjon_**
 
+## Generelt
+
+Vi tolker det slik at vi ikke kan ha tradeoff hva gjelder informasjonstap, men vi kan ha en tradeoff på både tiden det tar å betjene en ordre samt ikke-optimal oppførsel (at f.eks. en ordre blir betjent to ganger ved nettverksbrudd).
+
+- FSM for systemet:
+    - `INIT` må lese config-fil, klargjøre sin egen IP-adresse, nullstille ordrematrise o.l.
+    - `INIT` bør ha en `timer`-variabel på 5 sec, som til slutt vil avgjøre om neste state er `NO_CONNECT` eller `OPERATING`.
+    - `NO_CONNECT` har UDP_Listen, UDP_Broadcast, ellers kjøre soloheis.
+    - I `SYNC_CONN`-staten kan controlleren lytte etter nye ordre uten å betjene dem, ellers må den her pushe egne ordre til de andre og pulle de andres ordre -- refreshe og flette ordrematrise.
+    - `OPERATING` vil ta seg av vanlig drift.
+
+    <!--![FSM Controller Draft](https://github.com/simenkrantz/TTK4145-Sanntid/blob/master/Exercise4/controller_fsm.png)-->
+
+
+
 ## Moduler
 **_Generelt gjelder det å dele opp i så mange små prosesser som mulig_**
 
@@ -11,15 +26,7 @@
         - Ved en ny bestilling fra hall call-panel `i`, vil controller `i` kalkulerer sin egen kostfunksjon, og samtidig få kostfunksjon fra de `0-n` andre controllerne. Vil på det grunnlaget bestemme hvem som til slutt får hall call-bestillingen (eksternordren). Dette vil også fungere i spesialtilfellet ved nettverksbrudd og soloheis.
         - Ved cab call-bestilling (internordre), vil alle andre heiser ha uendelig kost.
     - Kommuniserer med alle de tre andre modulene, både  `Lift`, `Buttons` og `Orders`.
-    - FSM `Controller`:
-        - `INIT` må lese config-fil, klargjøre sin egen IP-adresse, nullstille ordrematrise o.l.
-        - `INIT` bør ha en `timer`-variabel på 5 sec, som til slutt vil avgjøre om neste state er `NO_CONNECT` eller `OPERATING`.
-        - `NO_CONNECT` har UDP_Listen, UDP_Broadcast, ellers kjøre soloheis.
-        - I `SYNC_CONN`-staten kan controlleren lytte etter nye ordre uten å betjene dem, ellers må den her pushe egne ordre til de andre og pulle de andres ordre -- refreshe og flette ordrematrise.
-        - `OPERATING` vil ta seg av vanlig drift.
-
-    ![FSM Controller Draft](https://github.com/simenkrantz/TTK4145-Sanntid/blob/master/Exercise4/controller_fsm.png)
-
+    - Communication diagram:
 
     
 - `Lift`: 
@@ -40,6 +47,13 @@
 - `Orders`:
     - Generelt er det irrelevant hvor heisen skal ende opp. Når man ankommer en gitt etasje, sjekker heisen om den har en cab call til denne etasjen eller om den har en hall call den skal ta hånd om.
     - Et forslag hva gjelder oppsett av ordre i den felles sendte ordrematrisen, er å ha en timer tilhørende hver ordre. Hvis en ordre ikke fjernes innen f.eks. to eller fem minutter, sendes den enten på ny til den respektive controlleren eller blir redistribuert til en av de andre.
+    - Kan bruke timestamps for å skille ordre, og på den måten gi en prioriteringer på ordre. [Se også denne linken.](https://michal.muskala.eu/2015/07/30/unix-timestamps-in-elixir.html)
+    - Lagre siste `k` utførte ordre i en liste, for å kunne dobbeltsjekke om en ordre har blitt borte eller er utført.
+    - Antar at når en heis har fått tildelt en hall call-ordre, er den ordren låst til den respektive heisen.
+
+- `Log`:
+    - Loggen kan lagres i minnet, for nettverksfeil.
+    - Logger kun interne ordre. Hvis en soloheis som kommer opp på nettet igjen får beskjed fra en timer på en annen node om at den har en internordre, kan den tidligere soloheisen sjekke loggen og si at den allerede har utført ordren.
 
 ## Kommunikasjon
 Controllerne sender ut informasjon med et gitt intervall, f.eks. hvert halve sekund e.l. Alle controllerne vet hva de andre har av ordre, inkludert internordre -- dette som backup ved nettverksfeil eller powerloss.
@@ -66,8 +80,13 @@ Config er noe vi må se mer på. Antar at denne ikke er korrupt, og inneholder r
 
 ## Use Case 1
 **Trykk på 2.etg UP-knapp ved heis 3**
-1. Knapp gir beskjed til sin respektive controller, i dette tilfellet `C3`, _Jeg er høy_
-2. `C3` spør om svar på kostfunksjon for denne ordren fra `C1` og `C2`
-3. Etter reply: `C3` gir beskjed om at f.eks. `C2` får denne ordren
+1. Knapp gir beskjed til sin respektive controller, i dette tilfellet `Ci`, _Jeg er høy_
+2. `Ci` spør om svar på kostfunksjon for denne ordren fra `Cj` og `Ck`
+3. Etter reply: `Ci` gir beskjed om at f.eks. `Cj` får denne ordren.
+    - `Ci` gir beskjed til en kontroller `!= Cj` om å overvåke bestillingen til `Cj` (en kontroller kan i utg.pkt. ikke overvåke seg selv, såfremt det ikke er en soloheis).
 4. Bestilling legges inn i ordrematrisen (notat: Trengs en _ack_, timer e.l.?)
 5. Alle hall lights 2. etg UP skrus på, hos alle heiser som har fått ordre. Hvis vi har en soloheis, vil ikke denne skru på lyset før den evt. er tilbake på nettverket
+
+
+## Use Case 2
+**Oppstart av node**
