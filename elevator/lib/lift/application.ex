@@ -14,6 +14,8 @@
     ]
     {:ok,driver_pid} = Driver.start
     {:ok,lift_pid} = Lift.FSM.start_link(self(),driver_pid)
+    Button.Supervisor.start_link([driver_pid,4])
+
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     #opts = [strategy: :one_for_one, name: Elevator.Supervisor]

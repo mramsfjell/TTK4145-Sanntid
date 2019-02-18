@@ -1,17 +1,26 @@
 defmodule IO.Button do
   use Task
-  def start_link(args) do
-    Task.start_link(__MODULE__, :button_poll, [args])
+
+  def start_link(button_info) do
+    Task.start_link(__MODULE__, :button_poll, [button_info])
   end
 
-  def button_poll args = {pid,button,floor} do
-    case Driver.get_order_button_state(pid,floor,button) do
+  def child_spec([id|button_info]) do
+    %{id: id,
+      start: {__MODULE__,:start_link,[button_info]},
+      restart: :permanent,
+      type: :worker
+    }
+  end
+
+  def button_poll button_info = [driver_pid,button,floor] do
+    case Driver.get_order_button_state(driver_pid,floor,button) do
       1 -> IO.puts "#{button} at floor #{floor} pushed"
-            Elevator.Orderlist.add(:order_list,floor,button)
+            #Elevator.Orderlist.add(:order_list,floor,button)
             Process.sleep(1000)
       0 -> Process.sleep(100)
     end
-    button_poll args
+    button_poll button_info
   end
 end
 

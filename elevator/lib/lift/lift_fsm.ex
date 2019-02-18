@@ -59,7 +59,6 @@ defmodule Lift.FSM do
   def handle_event(:cast,{:at_floor,floor},:init,data) do
     #Tell controller I'm alive a %{controller: #PID<0.185.0>, driver: #PID<0.186.0>}}
 
-t floor
     Driver.set_motor_direction(data.driver,:stop)
     {:next_state,:idle,data}
   end
