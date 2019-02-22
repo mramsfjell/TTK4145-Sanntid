@@ -30,42 +30,62 @@ defmodule Elevator.Orderlist do
   end
 
   #Helper functions
-  defp get_order_list_index(floor,button_type) do
-    case button_type do
-      :hall_up -> floor
-      :cab -> floor
-      :hall_down -> floor - 1
+  def order_at_floor(order,floor,direction) do
+    order.floor == floor and
+    case direction do
+      :up ->
+        order.button_type == :cab or
+        order.button_type == :hall_up
+      :down ->
+        order.button_type == :cab or
+        order.button_type == :hall_down
     end
   end
 
   #Callbacks
 
-  def init(state) do
-    orders = %{
-      cab: List.duplicate(0, state.floors),
-      hall_up: List.duplicate(0, state.floors),
-      hall_down: List.duplicate(0, state.floors)
+  def init(config) do
+    new_state = %{
+      active: [],
+      complete: [],
+      floors: config.floors,
+      order_count: 0
     }
-    new_state = state |> Map.put(:orders,orders)
     {:ok,new_state}
   end
 
   def handle_call({:add,floor,button_type},_from, state) do
-    if 0 <= floor and floor < state.floors do
-      new_list = get_in(state,[:orders,button_type])
-                 |> List.update_at(floor, &(&1 = 1))
+    case Order.new(floor,button_type) do
+      :error ->
+        {:reply,{:error,:nonexistent_floor},state}
+      order ->
+        state = Map.update!(state, :active,&([&1|order]))
+        state = Map.update!(state, :order_count, &(&1+1))
+        state |> inspect |> IO.puts
+        {:reply,:ok,state}
 
-      new_state = put_in(state,[:orders,button_type],new_list)
-      new_state |> inspect |> IO.puts
-      {:reply,:ok,new_state}
-    else
-      {:reply,{:error,:nonexistent_floor},state}
     end
+  end
+
+  def handle_call({:remove,floor,direction},_from,state) do
+    #IO.puts inspect(order_at_floor(&1,floor,direction)))
+     case state.active
+        |> Enum.group_by(&(order_at_floor(&1,floor,direction)))
+        |> Map.values()
+        do
+          [new_active,matching_orders] ->
+            state = Map.put(state,:active,new_active)
+            state = Map.put(state,:complete,[matching_orders|state.complete])
+            state = Map.update!(state, :order_count, &(&1-1))
+
+
+
+    {:reply,:ok,state}
   end
 
 
   def handle_call({:get},_from, state) do
-    {:reply,{:ok,state.orders},state}
+    {:reply,{:ok,state.active},state}
   end
 
   def handle_call({:get,floor,direction},_from,state) do
@@ -81,23 +101,27 @@ defmodule Elevator.Orderlist do
     {:reply,order?,state}
   end
 
-  def handle_call({:remove,floor,direction},_from,state) do
-    if 0 <= floor and floor < state.floors do
-      new_state =
-        case direction do
-          :up ->
-            new_list = state.orders.hall_up |> List.update_at(floor, &(&1 = 0))
-            put_in(state,[:orders,:hall_up],new_list)
-          :down ->
-            new_list = state.orders.hall_down |> List.update_at(floor, &(&1 = 0))
-            put_in(state,[:orders,:hall_down],new_list)
-        end
-      cab_list = state.orders.cab |> List.update_at(floor, &(&1 = 0))
-      new_state = put_in(new_state,[:orders,:cab],cab_list)
-      IO.puts inspect new_state.orders
-      {:reply,:ok,new_state}
-    else
-      {:reply,{:error,:nonexistent_floor},state}
-    end
+
+end
+
+defmodule Order do
+  @valid_order [:hall_down, :cab, :hall_up]
+  @valid_floor 0..3
+  @enforce_keys [:floor,:button_type]
+  defstruct [:floor,:button_type,:time_stamp,order_nr: nil] #node_id
+
+  def new(floor,button_type)
+    when floor in @valid_floor and  button_type in @valid_order
+    do
+      %Order{
+        floor: floor,
+        button_type: button_type,
+        time_stamp: Time.utc_now()|> Time.truncate(:second),
+        order_nr: nil
+      }
+  end
+
+  def new(floor,button_type) do
+    {:error,:invalid_order}
   end
 end
