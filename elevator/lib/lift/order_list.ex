@@ -59,7 +59,7 @@ defmodule Elevator.Orderlist do
       :error ->
         {:reply,{:error,:nonexistent_floor},state}
       order ->
-        state = Map.update!(state, :active,&([&1|order]))
+        state = Map.update!(state, :active,&([order|&1]))
         state = Map.update!(state, :order_count, &(&1+1))
         state |> inspect |> IO.puts
         {:reply,:ok,state}
@@ -68,18 +68,32 @@ defmodule Elevator.Orderlist do
   end
 
   def handle_call({:remove,floor,direction},_from,state) do
-    #IO.puts inspect(order_at_floor(&1,floor,direction)))
-     case state.active
+    #IO.puts inspect(state.active)
+    complete_orders = Enum.filter(state.active,&(order_at_floor(&1,floor,direction)))
+
+    if length(complete_orders) > 0 do
+      new_active = Enum.filter(state.active,)# Filter bort complete orders, så legg itl som under
+
+
+
+
+     active_split_map = 
+        state.active
         |> Enum.group_by(&(order_at_floor(&1,floor,direction)))
         |> Map.values()
-        do
+      if 
           [new_active,matching_orders] ->
+            IO.puts inspect new_active
             state = Map.put(state,:active,new_active)
             state = Map.put(state,:complete,[matching_orders|state.complete])
             state = Map.update!(state, :order_count, &(&1-1))
+          other ->
+            IO.puts(inspect(other)) 
+            :ok
+        end
 
 
-
+    #IO.puts(inspect(state))
     {:reply,:ok,state}
   end
 
