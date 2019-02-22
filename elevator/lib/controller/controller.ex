@@ -1,4 +1,4 @@
-defmodule Controller do
+defmodule Elevator.Controller do
   use GenServer
 
   def start_link(controller_pid,driver_pid) do
@@ -28,7 +28,7 @@ defmodule Controller do
   end
 
   def get_cost(lift_pid, order_id, orderlist, lastpastfloot, latestorder) do
-    GenServer.cast(lift_pid,{:get_cost, order_id}) #GenServer.cast(lift_pid,{:get_state})
+    GenServer.cast(lift_pid,{:get_cost, order_id}) 
   end
 
   def set_direction do
@@ -66,34 +66,11 @@ defmodule Controller do
     {:keep_state_and_data}
   end
 
-  def handle_event(:cast,{:set_light,floor,button_type, light_state},:init,data) do
-    {:keep_state_and_data}
-  end
-
-  def handle_event(:cast,{:set_light,floor,button_type, light_state},_state,data) do
-    Driver.set_order_button_light(data.driver,floor,button_type, light_state)
-    {:keep_state_and_data}
-  end
-
   def handle_event(:cast,{:start_handling},_state,data) do
     #Ask controller what to do
     {:keep_state_and_data}
   end
 
-  def handle_event(:cast,{:close_door},:door_open,data) do
-    Driver.set_door_open_light(data.driver,:off)
-    #Ask controller what to do
-    new_state =
-      #Ask controller what to do
-    case dummy_answer = :stop do
-      :stop ->
-        :idle
-      motor_dir ->
-        Driver.set_motor_direction(data.driver,motor_dir)
-        :mooving
-    end
-    {:next_state,new_state,data}
-  end
 
   def handle_event(:cast,{:get_state},state,_data) do
     IO.puts state
