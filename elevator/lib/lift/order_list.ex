@@ -4,34 +4,32 @@ defmodule Elevator.Orderlist do
   @order_ttl 5_000 #milliseconds
 
   #Orderlist layout
-  #%{up: [0 0 0 0], down: [0 0 0 0], cab: [0 0 0 0]}
+  #%{active: [orders], complete: [orders], :oder_count integer, :floors}
 
   def start_link(floors) when is_integer(floors) do
     GenServer.start_link(__MODULE__, %{floors: floors}, [name: :order_list])
   end
 
 
-  def add(pid,floor,button_type)when is_integer(floor) and is_atom(button_type) do
-    if button_type == :cab or button_type == :hall_down or button_type == :hall_up   do
-      GenServer.call(pid, {:add,floor,button_type})
-    else
-      {:error,:invalid_direction}
-    end
+  def add(pid,floor,button_type)
+  when is_integer(floor) and is_atom(button_type)
+  do
+    GenServer.call(pid, {:add,floor,button_type})
   end
 
-  def remove(pid,floor,direction) when is_integer(floor) and is_atom(direction) do
-    if direction == :up or direction == :down do
-      GenServer.call(pid, {:remove,floor,direction})
-    else
-      {:error,:invalid_direction}
-    end
+  def remove(pid,floor,direction)
+  when is_integer(floor) and is_atom(direction)
+  do
+    GenServer.call(pid, {:remove,floor,direction})
   end
 
   def get_orders(pid) do
     GenServer.call(pid,{:get})
   end
 
-  def order_at_floor?(pid,floor,direction) when is_integer(floor) and is_atom(direction) do
+  def order_at_floor?(pid,floor,direction)
+  when is_integer(floor) and is_atom(direction)
+  do
     GenServer.call(pid,{:get,floor,direction})
   end
 
@@ -45,23 +43,15 @@ defmodule Elevator.Orderlist do
   end
 
   #Helper functions
-  defp get_order_list_element(floor,button_type,state) do
-    get_in(state,[:orders,button_type]) |> Enum.fetch!(floor)
-  end
-
-  defp update_order_list_element(floor,button_type,value,state) do
-    time_stamp = Time.utc_now()|> Time.truncate(:second)
-    state
-    |> get_in([:orders,button_type])
-    |> List.update_at(floor, &(&1 = {value,time_stamp}))
-  end
-
-  defp check_order({_value,time}) do
-    time_out_treshold = Time.utc_now() |> Time.add(-1*@order_ttl)
-    case Time.compare(time_out_treshold, time) do
-      :lt ->
-        true
-      _ -> false
+  defp order_at_floor(order,floor,direction) do
+    order.floor == floor and
+    case direction do
+      :up ->
+        order.button_type == :cab or
+        order.button_type == :hall_up
+      :down ->
+        order.button_type == :cab or
+        order.button_type == :hall_down
     end
   end
 
@@ -73,70 +63,74 @@ defmodule Elevator.Orderlist do
 
 
   #Callbacks
-
-  def init(state) do
-    time_stamp = Time.utc_now()|> Time.truncate(:millisecond)
-    init_order_list = List.duplicate({0,time_stamp}, state.floors)
-    orders = %{
-      cab: init_order_list,
-      hall_up: init_order_list,
-      hall_down: init_order_list
+  def init(config) do
+    new_state = %{
+      active: [],
+      complete: [],
+      floors: config.floors,
+      order_count: 0
     }
-    new_state = state |> Map.put(:orders,orders)
-    schedule_old_order_check
     {:ok,new_state}
   end
 
   def handle_call({:add,floor,button_type},_from, state) do
-    if 0 <= floor and floor < state.floors do
-      new_list = update_order_list_element(floor,button_type,1,state)
-      new_state = put_in(state,[:orders,button_type],new_list)
-      new_state |> inspect |> IO.puts
-      {:reply,:ok,new_state}
-    else
-      {:reply,{:error,:nonexistent_floor},state}
+    case Order.new(floor,button_type) do
+      {:error,_} ->
+        {:reply,{:error,:nonexistent_floor},state}
+      order ->
+        state = Map.update!(state, :active,&([order|&1]))
+        state = Map.update!(state, :order_count, &(&1+1))
+        state |> inspect |> IO.puts
+        {:reply,:ok,state}
     end
+  end
+
+  def handle_call({:remove,floor,direction},_from,state) do
+    #IO.puts inspect(state.active)
+    completed_orders = Enum.filter(state.active,&(order_at_floor(&1,floor,direction)))
+    new_state =
+    if length(completed_orders) > 0 do
+      active_orders = Enum.filter(state.active,&(&1 not in completed_orders))
+      state = Map.put(state,:active,active_orders)
+      state = Map.put(state,:complete,[completed_orders|state.complete])
+      state = Map.update!(state, :order_count, &(&1-length(completed_orders)))
+    end
+    IO.puts(inspect(state))
+    {:reply,:ok,new_state}
   end
 
 
   def handle_call({:get},_from, state) do
-    {:reply,{:ok,state.orders},state}
+    {:reply,{:ok,state.active},state}
   end
 
   def handle_call({:get,floor,direction},_from,state) do
-    order? =
-    case direction do
-      :up ->
-        {hall_order,_time} = get_order_list_element(floor,:hall_up,state)
-        {cab_order,_time} = get_order_list_element(floor,:cab,state)
-        hall_order == 1 or cab_order == 1
-      :down ->
-        {hall_order,_time} = get_order_list_element(floor,:hall_down,state)
-        {cab_order,_time} = get_order_list_element(floor,:cab,state)
-        hall_order == 1 or cab_order == 1
-    end
+    order? = state.active
+    |> Enum.any?(&(order_at_floor(&1,floor,direction)))
     {:reply,order?,state}
   end
 
-  def handle_call({:remove,floor,direction},_from,state) do
-    if 0 <= floor and floor < state.floors do
-      time_stamp = Time.utc_now()|> Time.truncate(:millisecond)
-      new_state =
-        case direction do
-          :up ->
-            new_list = update_order_list_element(floor,:hall_up,0,state)
-            put_in(state,[:orders,:hall_up],new_list)
-          :down ->
-            new_list = update_order_list_element(floor,:hall_down,0,state)
-            put_in(state,[:orders,:hall_down],new_list)
-        end
-      cab_list = update_order_list_element(floor,:cab,0,state)
-      new_state = put_in(new_state,[:orders,:cab],cab_list)
-      IO.puts inspect new_state.orders
-      {:reply,:ok,new_state}
-    else
-      {:reply,{:error,:nonexistent_floor},state}
-    end
+end
+
+defmodule Order do
+  @valid_order [:hall_down, :cab, :hall_up]
+  @valid_floor 0..3
+  @enforce_keys [:floor,:button_type]
+  defstruct [:floor,:button_type,:time_stamp,order_nr: nil] #node_id
+
+  def new(floor,button_type)
+    when floor in @valid_floor and  button_type in @valid_order
+    do
+      %Order{
+        floor: floor,
+        button_type: button_type,
+        time_stamp: Time.utc_now()|> Time.truncate(:second),
+        order_nr: nil
+      }
+  end
+
+  def new(floor,button_type) do
+    {:error,:invalid_order}
   end
 
   def handle_info(:old_order_check,state) do
