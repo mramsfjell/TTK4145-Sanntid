@@ -2,18 +2,22 @@ defmodule Elevator.Orderlist do
   use GenServer
 
   #Orderlist layout
-  #%{up: [0 0 0 0], down: [0 0 0 0], cab: [0 0 0 0]}
+  #%{active: [orders], complete: [orders], :oder_count integer, :floors}
 
   def start_link(floors) when is_integer(floors) do
     GenServer.start_link(__MODULE__, %{floors: floors}, [name: :order_list])
   end
 
 
-  def add(pid,floor,button_type)when is_integer(floor) and is_atom(button_type) do
+  def add(pid,floor,button_type)
+  when is_integer(floor) and is_atom(button_type)
+  do
     GenServer.call(pid, {:add,floor,button_type})
   end
 
-  def remove(pid,floor,direction) when is_integer(floor) and is_atom(direction) do
+  def remove(pid,floor,direction)
+  when is_integer(floor) and is_atom(direction)
+  do
     GenServer.call(pid, {:remove,floor,direction})
   end
 
@@ -21,7 +25,9 @@ defmodule Elevator.Orderlist do
     GenServer.call(pid,{:get})
   end
 
-  def order_at_floor?(pid,floor,direction) when is_integer(floor) and is_atom(direction) do
+  def order_at_floor?(pid,floor,direction)
+  when is_integer(floor) and is_atom(direction)
+  do
     GenServer.call(pid,{:get,floor,direction})
   end
 
@@ -30,7 +36,7 @@ defmodule Elevator.Orderlist do
   end
 
   #Helper functions
-  def order_at_floor(order,floor,direction) do
+  defp order_at_floor(order,floor,direction) do
     order.floor == floor and
     case direction do
       :up ->
@@ -56,7 +62,7 @@ defmodule Elevator.Orderlist do
 
   def handle_call({:add,floor,button_type},_from, state) do
     case Order.new(floor,button_type) do
-      :error ->
+      {:error,_} ->
         {:reply,{:error,:nonexistent_floor},state}
       order ->
         state = Map.update!(state, :active,&([order|&1]))
@@ -69,32 +75,16 @@ defmodule Elevator.Orderlist do
 
   def handle_call({:remove,floor,direction},_from,state) do
     #IO.puts inspect(state.active)
-    complete_orders = Enum.filter(state.active,&(order_at_floor(&1,floor,direction)))
-
-    if length(complete_orders) > 0 do
-      new_active = Enum.filter(state.active,)# Filter bort complete orders, så legg itl som under
-
-
-
-
-     active_split_map = 
-        state.active
-        |> Enum.group_by(&(order_at_floor(&1,floor,direction)))
-        |> Map.values()
-      if 
-          [new_active,matching_orders] ->
-            IO.puts inspect new_active
-            state = Map.put(state,:active,new_active)
-            state = Map.put(state,:complete,[matching_orders|state.complete])
-            state = Map.update!(state, :order_count, &(&1-1))
-          other ->
-            IO.puts(inspect(other)) 
-            :ok
-        end
-
-
-    #IO.puts(inspect(state))
-    {:reply,:ok,state}
+    completed_orders = Enum.filter(state.active,&(order_at_floor(&1,floor,direction)))
+    new_state =
+    if length(completed_orders) > 0 do
+      active_orders = Enum.filter(state.active,&(&1 not in completed_orders))
+      state = Map.put(state,:active,active_orders)
+      state = Map.put(state,:complete,[completed_orders|state.complete])
+      state = Map.update!(state, :order_count, &(&1-length(completed_orders)))
+    end
+    IO.puts(inspect(state))
+    {:reply,:ok,new_state}
   end
 
 
@@ -103,18 +93,9 @@ defmodule Elevator.Orderlist do
   end
 
   def handle_call({:get,floor,direction},_from,state) do
-    order? =
-    case direction do
-      :up ->
-        state.orders.hall_up |> Enum.fetch!(floor) == 1 or
-        state.orders.cab |> Enum.fetch!(floor) == 1
-      :down ->
-        state.orders.hall_down |> Enum.fetch!(floor) == 1 or
-        state.orders.cab |> Enum.fetch!(floor) == 1
-    end
+    order? = state.active |> Enum.any?(&(order_at_floor(&1,floor,direction)))
     {:reply,order?,state}
   end
-
 
 end
 
