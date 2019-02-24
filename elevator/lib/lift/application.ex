@@ -7,18 +7,26 @@
 
   def start(_type, _args) do
     :os.cmd 'xterm -e ElevatorServer'
+    Node.set_cookie(:group_64)
     # List all child processes to be supervised
-    children = [
-      # Starts a worker by calling: Elevator.Worker.start_link(arg)
-      # {Elevator.Worker, arg}
-    ]
-    {:ok,driver_pid} = Driver.start
+    {:ok,driver_pid} = Driver.start_link
     {:ok,lift_pid} = Lift.FSM.start_link(self(),driver_pid)
     Button.Supervisor.start_link([driver_pid,4])
 
+    children = [
+      {NetworkHandler,[34_432,35_543]},
+      {Elevator.Orderlist,[4]}
+      #{Driver,[]}
+      #{Driver,[]},
+      #{Lift.FSM,[]},
+      #{Button.Supervisor,[4]}
+      # Starts a worker by calling: Elevator.Worker.start_link(arg)
+      # {Elevator.Worker, arg}
+    ]
+
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
-    #opts = [strategy: :one_for_one, name: Elevator.Supervisor]
-    #Supervisor.start_link(children, opts)
+    opts = [strategy: :one_for_one, name: Elevator.Supervisor]
+    Supervisor.start_link(children, opts)
   end
 end

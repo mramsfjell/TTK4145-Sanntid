@@ -1,40 +1,40 @@
 defmodule Elevator.Orderlist do
   use GenServer
 
-  @order_ttl 5_000 #milliseconds
-
+  @order_ttl 60_000 #milliseconds
+  @name :order_list
   #Orderlist layout
   #%{active: [orders], complete: [orders], :oder_count integer, :floors}
 
-  def start_link(floors) when is_integer(floors) do
-    GenServer.start_link(__MODULE__, %{floors: floors}, [name: :order_list])
+  def start_link([floors]) when is_integer(floors) do
+    GenServer.start_link(__MODULE__, %{floors: floors}, [name: @name])
   end
 
 
-  def add(pid,floor,button_type)
+  def add(floor,button_type)
   when is_integer(floor) and is_atom(button_type)
   do
-    GenServer.call(pid, {:add,floor,button_type})
+    GenServer.call(@name, {:add,floor,button_type})
   end
 
-  def remove(pid,floor,direction)
+  def remove(floor,direction)
   when is_integer(floor) and is_atom(direction)
   do
-    GenServer.call(pid, {:remove,floor,direction})
+    GenServer.call(@name, {:remove,floor,direction})
   end
 
-  def get_orders(pid) do
-    GenServer.call(pid,{:get})
+  def get_orders() do
+    GenServer.call(@name,{:get})
   end
 
-  def order_at_floor?(pid,floor,direction)
+  def order_at_floor?(floor,direction)
   when is_integer(floor) and is_atom(direction)
   do
-    GenServer.call(pid,{:get,floor,direction})
+    GenServer.call(@name,{:get,floor,direction})
   end
 
-  def stop(pid) do
-    GenServer.stop(pid)
+  def stop() do
+    GenServer.stop(@name)
   end
 
   #Consistency tests
@@ -55,13 +55,6 @@ defmodule Elevator.Orderlist do
     end
   end
 
-  defp check_order_list(orders) do
-    orders |> Enum.filter(fn {value,time} -> true end)
-  end
-
-
-
-
   #Callbacks
   def init(config) do
     new_state = %{
@@ -78,22 +71,24 @@ defmodule Elevator.Orderlist do
       {:error,_} ->
         {:reply,{:error,:nonexistent_floor},state}
       order ->
-        state = Map.update!(state, :active,&([order|&1]))
-        state = Map.update!(state, :order_count, &(&1+1))
-        state |> inspect |> IO.puts
-        {:reply,:ok,state}
+        new_state =
+          state
+          |> Map.update!(:active,&([order|&1]))
+          |> Map.update!(:order_count, &(&1+1))
+        {:reply,:ok,new_state}
     end
   end
 
   def handle_call({:remove,floor,direction},_from,state) do
     #IO.puts inspect(state.active)
-    completed_orders = Enum.filter(state.active,&(order_at_floor(&1,floor,direction)))
+    completed_orders = state.active |> Enum.filter(&(order_at_floor(&1,floor,direction)))
+    active_orders = state.active -- completed_orders
     new_state =
     if length(completed_orders) > 0 do
-      active_orders = Enum.filter(state.active,&(&1 not in completed_orders))
-      state = Map.put(state,:active,active_orders)
-      state = Map.put(state,:complete,[completed_orders|state.complete])
-      state = Map.update!(state, :order_count, &(&1-length(completed_orders)))
+      state
+        |> Map.put(:active,active_orders)
+        |> Map.update!(:complete,&([completed_orders|&1]))
+        |> Map.update!(:order_count, &(&1-length(completed_orders)))
     end
     IO.puts(inspect(state))
     {:reply,:ok,new_state}
@@ -109,7 +104,6 @@ defmodule Elevator.Orderlist do
     |> Enum.any?(&(order_at_floor(&1,floor,direction)))
     {:reply,order?,state}
   end
-
 end
 
 defmodule Order do
@@ -128,17 +122,7 @@ defmodule Order do
         order_nr: nil
       }
   end
-
-  def new(floor,button_type) do
+  def new(_floor,_button_type) do
     {:error,:invalid_order}
-  end
-
-  def handle_info(:old_order_check,state) do
-    time_out_treshold = Time.utc_now() |> Time.add(-1*@order_ttl)
-    for {button_type,orders} <- state.orders, fn {time,value} -> v==1 end, do:
-      #for {value,time} <- order_list, do:
-      IO.puts("Orderlist contains old order"
-  schedule_old_order_check()
-  {:noreply,state}
   end
 end
