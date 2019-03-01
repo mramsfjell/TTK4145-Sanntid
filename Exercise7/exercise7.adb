@@ -21,6 +21,14 @@ procedure exercise7 is
             ------------------------------------------
             -- PART 3: Complete the exit protocol here
             ------------------------------------------
+            if Finished'Count = N then
+                Should_Commit := Aborted xor True;
+                Finished_Gate_Open := True;
+            elsif Finished'Count = 1 then
+                Aborted := False;
+                Finished_Gate_Open := False;
+            end if;
+
         end Finished;
 
         procedure Signal_Abort is
@@ -40,10 +48,21 @@ procedure exercise7 is
     
     function Unreliable_Slow_Add (x : Integer) return Integer is
     Error_Rate : Constant := 0.15;  -- (between 0 and 1)
+    rand_num : Float := 0.6;
     begin
+        --rand_num := Random(Gen);
         -------------------------------------------
         -- PART 1: Create the transaction work here
         -------------------------------------------
+        if rand_num > Error_Rate then
+            delay Duration(rand_num*4);
+            x := x + 10;
+        else  
+            raise Count_Failed;
+        end if;
+
+        return x;
+
     end Unreliable_Slow_Add;
 
 
@@ -60,11 +79,12 @@ procedure exercise7 is
         loop
             Put_Line ("Worker" & Integer'Image(Initial) & " started round" & Integer'Image(Round_Num));
             Round_Num := Round_Num + 1;
-
             ---------------------------------------
             -- PART 2: Do the transaction work here             
             ---------------------------------------
+            Num := Unreliable_Slow_Add(Prev);
             
+
             if Manager.Commit = True then
                 Put_Line ("  Worker" & Integer'Image(Initial) & " comitting" & Integer'Image(Num));
             else
@@ -73,13 +93,17 @@ procedure exercise7 is
                              " to" & Integer'Image(Prev));
                 -------------------------------------------
                 -- PART 2: Roll back to previous value here
-                -------------------------------------------
+                -------------------------------------------             
+                Num := Prev;
             end if;
 
             Prev := Num;
             delay 0.5;
 
         end loop;
+        exception
+                when Count_Failed =>
+                Manager.Signal_Abort;
     end Transaction_Worker;
 
     Manager : aliased Transaction_Manager (3);
