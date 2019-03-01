@@ -5,17 +5,18 @@ defmodule Driver do
   @state_map  %{:on => 1, :off => 0}
   @direction_map %{:up => 1, :down => 255, :stop => 0}
 
+  @name :driver
   def start_link(_args \\ []) do
     start_link {127,0,0,1}, 15657
   end
 
 
   def start_link address, port do
-    GenServer.start_link(__MODULE__, [address, port], [name: :driver])
+    GenServer.start_link(__MODULE__, [address, port], [name: @name])
   end
 
-  def stop pid do
-    GenServer.stop pid
+  def stop do
+    GenServer.stop @name
   end
 
   def init [address, port] do
@@ -26,44 +27,44 @@ defmodule Driver do
 
   # User API ----------------------------------------------
   # direction can be :up/:down/:stop
-  def set_motor_direction pid, direction do
-    GenServer.cast pid, {:set_motor_direction, direction}
+  def set_motor_direction direction do
+    GenServer.cast @name, {:set_motor_direction, direction}
   end
 
   # button_type can be :hall_up/:hall_down/:cab
   # state can be :on/:off
-  def set_order_button_light pid, floor,button_type, state do
-    GenServer.cast pid, {:set_order_button_light, button_type, floor, state}
+  def set_order_button_light floor,button_type, state do
+    GenServer.cast @name, {:set_order_button_light, button_type, floor, state}
   end
 
-  def set_floor_indicator pid, floor do
-    GenServer.cast pid, {:set_floor_indicator, floor}
-  end
-
-  # state can be :on/:off
-  def set_stop_button_light pid, state do
-    GenServer.cast pid, {:set_stop_button_light, state}
+  def set_floor_indicator floor do
+    GenServer.cast @name, {:set_floor_indicator, floor}
   end
 
   # state can be :on/:off
-  def set_door_open_light pid, state do
-    GenServer.cast pid, {:set_door_open_light, state}
+  def set_stop_button_light state do
+    GenServer.cast @name, {:set_stop_button_light, state}
   end
 
-  def get_order_button_state pid, floor, button_type do
-    GenServer.call pid, {:get_order_button_state, floor, button_type}
+  # state can be :on/:off
+  def set_door_open_light state do
+    GenServer.cast @name, {:set_door_open_light, state}
   end
 
-  def get_floor_sensor_state pid do
-    GenServer.call pid, :get_floor_sensor_state
+  def get_order_button_state floor, button_type do
+    GenServer.call @name, {:get_order_button_state, floor, button_type}
   end
 
-  def get_stop_button_state pid do
-    GenServer.call pid, :get_stop_button_state
+  def get_floor_sensor_state do
+    GenServer.call @name, :get_floor_sensor_state
   end
 
-  def get_obstruction_switch_state pid do
-    GenServer.call pid, :get_obstruction_switch_state
+  def get_stop_button_state do
+    GenServer.call @name, :get_stop_button_state
+  end
+
+  def get_obstruction_switch_state do
+    GenServer.call @name, :get_obstruction_switch_state
   end
 
 

@@ -6,14 +6,17 @@
   use Application
 
   def start(_type, _args) do
-    :os.cmd 'xterm -e ElevatorServer'
+    #:os.cmd 'xterm -e ElevatorServer'
     Node.set_cookie(:group_64)
     # List all child processes to be supervised
-    {:ok,driver_pid} = Driver.start_link
-    {:ok,lift_pid} = Lift.FSM.start_link(self(),driver_pid)
-    Button.Supervisor.start_link([driver_pid,4])
+    #{:ok,driver_pid} = Driver.start_link
+    #{:ok,lift_pid} = Lift.FSM.start_link()
+    #Button.Supervisor.start_link([4])
 
     children = [
+      {Driver,[]},
+      {Lift.FSM,[]},
+      {Button.Supervisor,[4]},
       {NetworkHandler,[34_432,35_543]},
       {Elevator.Orderlist,[4]}
       #{Driver,[]}

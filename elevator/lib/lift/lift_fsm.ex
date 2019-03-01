@@ -1,16 +1,17 @@
 defmodule Lift.FSM do
   use GenStateMachine
 
-  def start_link(controller_pid,driver_pid) do
-    GenStateMachine.start_link(__MODULE__,%{controller: controller_pid, driver: driver_pid},[name: :FSM])
+  @name :FSM
+
+  def start_link(_args \\[]) do
+    GenStateMachine.start_link(__MODULE__,%{},[name: @name])
   end
 
   def init(data) do
-
-    Task.start_link(IO.FloorSensor,:floor_sensor_poll,[data.driver,self()])
-    case Driver.get_floor_sensor_state(data.driver) do
+    Task.start_link(IO.FloorSensor,:floor_sensor_poll,[])
+    case Driver.get_floor_sensor_state() do
       :between_floors ->
-        Driver.set_motor_direction(data.driver,:up)
+        Driver.set_motor_direction(:up)
         {:ok,:init,data}
       floor ->
         {:ok,:idle,data}
@@ -18,28 +19,28 @@ defmodule Lift.FSM do
   end
 
 
-  def at_floor(lift_pid, floor) do
-    GenStateMachine.cast(lift_pid,{:at_floor,floor})
+  def at_floor(floor) do
+    GenStateMachine.cast(@name,{:at_floor,floor})
   end
 
-  def button_pushed(lift_pid,floor,button_type) do
-    GenStateMachine.cast(lift_pid,{:button_push,floor,button_type})
+  def button_pushed(floor,button_type) do
+    GenStateMachine.cast(@name,{:button_push,floor,button_type})
   end
 
-  def set_button_light(lift_pid, floor,button_type, state) do
-    GenStateMachine.cast(lift_pid,{:set_light,floor,button_type, state})
+  def set_button_light(floor,button_type, state) do
+    GenStateMachine.cast(@name,{:set_light,floor,button_type, state})
   end
 
-  def start_handling(lift_pid) do
-    GenStateMachine.cast(lift_pid,{:start_handling})
+  def start_handling() do
+    GenStateMachine.cast(@name,{:start_handling})
   end
 
-  def close_door(lift_pid) do
-    GenStateMachine.cast(lift_pid,{:close_door})
+  def close_door() do
+    GenStateMachine.cast(@name,{:close_door})
   end
 
-  def get_state(lift_pid) do
-    GenStateMachine.cast(lift_pid,{:get_state})
+  def get_state() do
+    GenStateMachine.cast(@name,{:get_state})
   end
 
   #Callbacks
@@ -48,7 +49,7 @@ defmodule Lift.FSM do
     new_state =
     case dummy_answer = :stop do
       :stop ->
-        Driver.set_motor_direction(data.driver,:stop)
+        Driver.set_motor_direction(:stop)
         :door_open
       _other ->
         :mooving
@@ -59,31 +60,26 @@ defmodule Lift.FSM do
   def handle_event(:cast,{:at_floor,floor},:init,data) do
     #Tell controller I'm alive a %{controller: #PID<0.185.0>, driver: #PID<0.186.0>}}
 
-    Driver.set_motor_direction(data.driver,:stop)
+    Driver.set_motor_direction(:stop)
     {:next_state,:idle,data}
   end
 
   def handle_event(:cast,{:button_push,floor,button_type},:init,data) do
-    {:keep_state_and_data}
+    :keep_state_and_data
   end
 
   def handle_event(:cast,{:button_push,floor,button_type},_state,data) do
     #send to controller
-    {:keep_state_and_data}
+    :keep_state_and_data
   end
 
   def handle_event(:cast,{:set_light,floor,button_type, light_state},:init,data) do
-    {:keep_state_and_data}
+    :keep_state_and_data
   end
 
   def handle_event(:cast,{:set_light,floor,button_type, light_state},_state,data) do
-    Driver.set_order_button_light(data.driver,floor,button_type, light_state)
-    {:keep_state_and_data}
-  end
-
-  def handle_event(:cast,{:start_handling},_state,data) do
-    #Ask controller what to do
-    {:keep_state_and_data}
+    Driver.set_order_button_light(floor,button_type, light_state)
+    :keep_state_and_data
   end
 
   def handle_event(:cast,{:start_handling},:idle,data) do
@@ -91,18 +87,24 @@ defmodule Lift.FSM do
       #Ask controller what to do
     case dummy_answer = :stop do
       :stop ->
-        Driver.set_door_open_light(data.driver,:on)
+        Driver.set_door_open_light(:on)
         #Start timer
         :door_open
       motor_dir ->
-        Driver.set_motor_direction(data.driver,motor_dir)
+        Driver.set_motor_direction(motor_dir)
         :mooving
     end
     {:next_state,new_state,data}
   end
 
+  def handle_event(:cast,{:start_handling},_state,data) do
+    #Ask controller what to do
+    :keep_state_and_data
+  end
+
+
   def handle_event(:cast,{:close_door},:door_open,data) do
-    Driver.set_door_open_light(data.driver,:off)
+    Driver.set_door_open_light(:off)
     #Ask controller what to do
     new_state =
       #Ask controller what to do
@@ -110,7 +112,7 @@ defmodule Lift.FSM do
       :stop ->
         :idle
       motor_dir ->
-        Driver.set_motor_direction(data.driver,motor_dir)
+        Driver.set_motor_direction(motor_dir)
         :mooving
     end
     {:next_state,new_state,data}
@@ -118,10 +120,11 @@ defmodule Lift.FSM do
 
   def handle_event(:cast,{:get_state},state,_data) do
     IO.puts state
-    {:keep_state_and_data}
+    :keep_state_and_data
   end
 
-
-
-
+  def handle_event(_,_args,_state,_date) do
+    IO.puts "hei"
+    :keep_state_and_data
+  end
 end
