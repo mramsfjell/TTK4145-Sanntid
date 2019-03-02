@@ -1,7 +1,7 @@
 with Ada.Text_IO, Ada.Integer_Text_IO, Ada.Numerics.Float_Random;
 use  Ada.Text_IO, Ada.Integer_Text_IO, Ada.Numerics.Float_Random;
 
-procedure exercise7 is
+procedure exercise8 is
 
     Count_Failed    : exception;    -- Exception to be raised when counting fails
     Gen             : Generator;    -- Random number generator
@@ -18,22 +18,21 @@ procedure exercise7 is
     protected body Transaction_Manager is
         entry Finished when Finished_Gate_Open or Finished'Count = N is
         begin
-            ------------------------------------------
-            -- PART 3: Complete the exit protocol here
-            ------------------------------------------
-            Finished_Gate_Open := True;
-
-            if Aborted then
-                Should_Commit := False;
-            else
-                Should_Commit := True;
-            end if;
-
-            if Finished'Count = 0 then
-                Finished_Gate_Open := False;
-                Aborted := False;
-            end if;
-            
+	   
+	   ------------------------------------------
+	   -- PART 3: Modify the Finished entry
+	   ------------------------------------------
+	   
+	   if Finished'Count = N-1 then
+	      Finished_Gate_Open := True;
+	      Should_Commit := not Aborted;
+	   end if;
+	   
+	   if Finished'Count = 0 then
+	      Finished_Gate_Open := False;
+	      Aborted := False;
+	   end if;
+	   
         end Finished;
 
         procedure Signal_Abort is
@@ -43,8 +42,12 @@ procedure exercise7 is
 
         function Commit return Boolean is
         begin
-            return Should_Commit;
-        end Commit;
+	   return Should_Commit; 
+	end Commit;
+	
+	------------------------------------------
+	-- PART 2: Create the Wait_Until_Aborted entry
+	------------------------------------------
         
     end Transaction_Manager;
 
@@ -54,18 +57,13 @@ procedure exercise7 is
     function Unreliable_Slow_Add (x : Integer) return Integer is
     Error_Rate : Constant := 0.15;  -- (between 0 and 1)
     begin
-        -------------------------------------------
-        -- PART 1: Create the transaction work here
-        -------------------------------------------
-        if Random(Gen) > Error_Rate then
-            delay Duration(Random(Gen)*4);
-            x := x + 10;
-        else  
-            raise Count_Failed;
-        end if;
-
-        return x;
-
+       if Random(Gen) > Error_Rate then
+	  delay Duration(Random(Gen) * 5.0);
+	  return X + 10;
+       else 
+	  delay Duration(Random(Gen) * 1.0);
+	  raise Count_Failed;
+       end if;
     end Unreliable_Slow_Add;
 
 
@@ -82,37 +80,35 @@ procedure exercise7 is
         loop
             Put_Line ("Worker" & Integer'Image(Initial) & " started round" & Integer'Image(Round_Num));
             Round_Num := Round_Num + 1;
-            ---------------------------------------
-            -- PART 2: Do the transaction work here             
-            ---------------------------------------
-            begin
-                Num := Unreliable_Slow_Add(Prev);
-            exception
-                when Count_Failed =>
-                    Manager.Signal_Abort;
-            end;
-            Manager.Finished;
-
+	    
+	    ------------------------------------------
+            -- PART 1: Select-Then-Abort statement
+            ------------------------------------------
+	    
+	    begin
+	       Num := Unreliable_Slow_Add(Num);
+	    exception
+	       when Count_Failed =>
+		  Manager.Signal_Abort;
+	    end;
+	    
+	    Manager.Finished;
+            
             if Manager.Commit = True then
                 Put_Line ("  Worker" & Integer'Image(Initial) & " comitting" & Integer'Image(Num));
             else
                 Put_Line ("  Worker" & Integer'Image(Initial) &
                              " reverting from" & Integer'Image(Num) &
-                             " to" & Integer'Image(Prev));
-                -------------------------------------------
-                -- PART 2: Roll back to previous value here
-                -------------------------------------------             
-                Num := Prev;
-
+			    " to" & Integer'Image(Prev));
+		
+		Num := Prev;
+		
             end if;
 
             Prev := Num;
             delay 0.5;
 
         end loop;
-        exception
-                when Count_Failed =>
-                Manager.Signal_Abort;
     end Transaction_Worker;
 
     Manager : aliased Transaction_Manager (3);
@@ -123,5 +119,5 @@ procedure exercise7 is
 
 begin
     Reset(Gen); -- Seed the random number generator
-end exercise7;
+end exercise8;
 
