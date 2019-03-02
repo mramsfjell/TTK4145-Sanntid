@@ -124,7 +124,7 @@ defmodule Lift.FSM do
   end
 
   def handle_event(_,_args,_state,_date) do
-    IO.puts "hei"
+    #IO.puts "hei"
     :keep_state_and_data
   end
 end
