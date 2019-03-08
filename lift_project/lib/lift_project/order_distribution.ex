@@ -1,53 +1,85 @@
 defmodule Order do
   @moduledoc """
-  
+
   """
 
-  @valid_order [:hall_down, :cab, :hall_up]
-  @valid_floor 0..3
+  @valid_orders [:hall_down, :cab, :hall_up]
   @enforce_keys [:floor,:button_type]
-  defstruct [:floor,:button_type,:time,node: nil,watch_dog: nil]
+  defstruct [:floor,:button_type,time: nil,node: nil,watch_dog: nil]
 
   def new(floor,button_type)
-    when floor in @valid_floor and  button_type in @valid_order
+    when is_integer(floor) and  button_type in @valid_orders
     do
       %Order{
         floor: floor,
-        button_type: button_type,
-        time: Time.utc_now()|> Time.truncate(:second),
-        node: Node.self
+        button_type: button_type
       }
   end
 
 
 defmodule OrderDistribution do
   @moduledoc """
+  This module takes care of distributing orders, both from IO and WatchDog.
 
   """
 
   use GenServer
+  @name :order_distribution
 
-  def assign_watchdog(order) when Node.list == [] do
-    Map.put(order,:watch_dog,Node.self)
+  def start_link(_args) do
+    GenServer.start_link(__MODULE__, [], name: @name)
+  end
+
+  def new_order(order = %Order{}) do
+    GenServer.call(@name, {:new_order,order})
+  end
+
+  def new_order(floor, button_type)
+    when is_integer(floor) and button_type in @valid_orders
+    do
+      order = Order.new(floor,button_type)
+      GenServer.call(@name, {:new_order,order})
+  end
+
+
+  # Callbacks
+
+  def handle_call({:new_order,order}) do
+    if order.button_type == :cab do
+      Map.put(order,:node,Node.self)
+      order =
+        assign_watchdog(order)
+        |> timestamp(order)
+    end
+    broadcast_result(order)
+  end
+
+
+  # Helper functions
+
+  def assign_watchdog(order)
+    when Node.list == []
+    do
+      Map.put(order,:watch_dog,Node.self)
   end
 
   def assign_watchdog(order) do
     watch_dog =
       [Node.self|Node.list] -- order.node
-       |> Enum.random()
+      |> Enum.random()
     Map.put(order,:watch_dog,watch_dog)
   end
 
   def assign_node(order) do
     with
-    {replies, _bad_nodes} <- GenServer.multi_call(:evaluate_cost, order)
+      {replies, _bad_nodes} <- GenServer.multi_call(:evaluate_cost, order)
     do
-      {node,_min_cost} = calculate_assignment(replies)
+      {node,_min_cost} = find_lowest_cost(replies)
       Map.put(order,:node,node)
     end
   end
 
-  def calculate_assignment(replies) do
+  def find_lowest_cost(replies) do
     {node, min_cost} = Enum.min_by(replies, fn({node,cost}) -> cost end)
   end
 
@@ -56,10 +88,11 @@ defmodule OrderDistribution do
     Map.put(order,:time,timestamp)
   end
 
-  def broadcast_result (order) do
-    order = assign_node(order)
-    |> assign_watchdog(order)
-    |> timestamp(order)
+  def broadcast_result(order) do
+    order =
+      assign_node(order)
+      |> assign_watchdog(order)
+      |> timestamp(order)
     GenServer.multi_call(:distribute_result, order)
   end
 
