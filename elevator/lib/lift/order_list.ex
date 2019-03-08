@@ -113,12 +113,12 @@ defmodule Elevator.Orderlist do
   end
 
   def handle_info({:nodedown, node},state) do
-    case get_pop_in(state,[:active,node]) do
+    case pop_in(state,[:active,node]) do
       {node_orders,state} ->
         responsible = Enum.filter(node_orders, &(&1.watch_node == Node.self))
         Enum.each(responsible, fn order->
           case order.button_type do
-            :cab ->
+            :cab -> 1
             oter ->
               IO.puts("add order to Auction")
               Process.sleep(500)
@@ -130,6 +130,7 @@ defmodule Elevator.Orderlist do
 end
 
 end
+
 
 defmodule Order do
   @valid_order [:hall_down, :cab, :hall_up]
@@ -147,7 +148,16 @@ defmodule Order do
         node: Node.self
       }
   end
+
+  def is_valid(order) do
+    true
+  end
+
   def new(_floor,_button_type) do
     {:error,:invalid_order}
   end
 end
+
+#def dustribute(order)
+#when Order.is_valid(order) do
+#GenServer.multi_call(Lift,{:get_cost,order})

@@ -15,14 +15,11 @@
 
     children = [
       {Driver,[]},
-      {Lift.FSM,[]},
+      {Lift.FSM,[4]},
       {Button.Supervisor,[4]},
       {NetworkHandler,[34_432,35_543]},
-      {Elevator.Orderlist,[4]}
-      #{Driver,[]}
-      #{Driver,[]},
-      #{Lift.FSM,[]},
-      #{Button.Supervisor,[4]}
+      {Elevator.Orderlist,[4]},
+      {IO.FloorSensor,[]}
       # Starts a worker by calling: Elevator.Worker.start_link(arg)
       # {Elevator.Worker, arg}
     ]
