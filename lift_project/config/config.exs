@@ -10,11 +10,11 @@ use Mix.Config
 
 # You can configure your application as:
 #
-#     config :project, key: :value
+#     config :lift_project, key: :value
 #
 # and access this configuration in your application as:
 #
-#     Application.get_env(:project, :key)
+#     Application.get_env(:lift_project, :key)
 #
 # You can also configure a third-party app:
 #

@@ -26,7 +26,7 @@ end
 
 defmodule IO.FloorSensor do
   use Task
-  def start_link() do
+  def start_link(_arg \\ []) do
     Task.start_link(__MODULE__,:floor_sensor_poll,[])
   end
 
@@ -37,10 +37,7 @@ defmodule IO.FloorSensor do
         floor_sensor_poll()
       floor ->
         Driver.set_floor_indicator(floor)
-        Lift.FSM.at_floor(floor) 
-        #Lift.FSM.send
-        #turn on light
-        #Decide if poll continiously or only when mooving
+        Lift.FSM.at_floor(floor)
         Process.sleep(2_000)
         floor_sensor_poll()
     end
