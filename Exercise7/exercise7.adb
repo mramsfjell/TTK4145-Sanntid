@@ -33,7 +33,7 @@ procedure exercise7 is
                 Finished_Gate_Open := False;
                 Aborted := False;
             end if;
-            
+
         end Finished;
 
         procedure Signal_Abort is
@@ -45,26 +45,29 @@ procedure exercise7 is
         begin
             return Should_Commit;
         end Commit;
-        
+
     end Transaction_Manager;
 
 
 
-    
+
     function Unreliable_Slow_Add (x : Integer) return Integer is
     Error_Rate : Constant := 0.15;  -- (between 0 and 1)
+    delay_length : Float := Random(Gen);
+    y:Integer:=x;
     begin
         -------------------------------------------
         -- PART 1: Create the transaction work here
         -------------------------------------------
         if Random(Gen) > Error_Rate then
-            delay Duration(Random(Gen)*4);
-            x := x + 10;
-        else  
+
+            delay Duration(4.0*delay_length);
+            y := y + 10;
+        else
             raise Count_Failed;
         end if;
 
-        return x;
+        return y;
 
     end Unreliable_Slow_Add;
 
@@ -83,7 +86,7 @@ procedure exercise7 is
             Put_Line ("Worker" & Integer'Image(Initial) & " started round" & Integer'Image(Round_Num));
             Round_Num := Round_Num + 1;
             ---------------------------------------
-            -- PART 2: Do the transaction work here             
+            -- PART 2: Do the transaction work here
             ---------------------------------------
             begin
                 Num := Unreliable_Slow_Add(Prev);
@@ -101,7 +104,7 @@ procedure exercise7 is
                              " to" & Integer'Image(Prev));
                 -------------------------------------------
                 -- PART 2: Roll back to previous value here
-                -------------------------------------------             
+                -------------------------------------------
                 Num := Prev;
 
             end if;
@@ -124,4 +127,3 @@ procedure exercise7 is
 begin
     Reset(Gen); -- Seed the random number generator
 end exercise7;
-
