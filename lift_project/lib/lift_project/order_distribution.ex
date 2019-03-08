@@ -23,6 +23,7 @@ defmodule OrderDistribution do
 
   """
 
+  # Need to be changed to Task if we want to handle several auctions at once
   use GenServer
   @name :order_distribution
 
@@ -47,11 +48,13 @@ defmodule OrderDistribution do
   def handle_call({:new_order,order}) do
     if order.button_type == :cab do
       Map.put(order,:node,Node.self)
-      order =
-        assign_watchdog(order)
-        |> timestamp(order)
+    else
+      assign_node(order)
     end
-    broadcast_result(order)
+    order
+      |> assign_watchdog
+      |> timestamp
+      |> broadcast_result
   end
 
 
@@ -89,10 +92,6 @@ defmodule OrderDistribution do
   end
 
   def broadcast_result(order) do
-    order =
-      assign_node(order)
-      |> assign_watchdog(order)
-      |> timestamp(order)
     GenServer.multi_call(:distribute_result, order)
   end
 
