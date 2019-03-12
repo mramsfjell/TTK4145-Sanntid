@@ -103,7 +103,7 @@ defmodule Elevator.Orderlist do
   def handle_call({:get,floor,direction},_from,state) do
     orders = get_in(state,[:active,Node.self])
       |> Map.values
-      |> Enum.filter(&(order_at_floor(&1,floor,direction)))
+      |> Enum.filter(fn(order_list) -> order_at_floor(order_list,floor,direction) end)
     {:reply,orders,state}
   end
 

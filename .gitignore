@@ -1,2 +1,4 @@
 
 elevator/lib/controller/controller.ex
+*.o
+*.ali

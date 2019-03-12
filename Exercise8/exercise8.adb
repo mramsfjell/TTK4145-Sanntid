@@ -8,31 +8,33 @@ procedure exercise8 is
 
     protected type Transaction_Manager (N : Positive) is
         entry Finished;
-        function Commit return Boolean;
+        entry Wait_Until_Aborted;
+        --function Commit return Boolean;
         procedure Signal_Abort;
     private
         Finished_Gate_Open  : Boolean := False;
         Aborted             : Boolean := False;
-        Should_Commit       : Boolean := True;
     end Transaction_Manager;
     protected body Transaction_Manager is
         entry Finished when Finished_Gate_Open or Finished'Count = N is
         begin
-	   
+
 	   ------------------------------------------
 	   -- PART 3: Modify the Finished entry
 	   ------------------------------------------
-	   
+     --Finished_Gate_Open := Finished'Count /= 0;
+     --if not Finished_Gate_Open then
+       --Aborted := False;
+     --end if;
 	   if Finished'Count = N-1 then
 	      Finished_Gate_Open := True;
-	      Should_Commit := not Aborted;
 	   end if;
-	   
+
 	   if Finished'Count = 0 then
 	      Finished_Gate_Open := False;
 	      Aborted := False;
 	   end if;
-	   
+
         end Finished;
 
         procedure Signal_Abort is
@@ -40,30 +42,32 @@ procedure exercise8 is
             Aborted := True;
         end Signal_Abort;
 
-        function Commit return Boolean is
-        begin
-	   return Should_Commit; 
-	end Commit;
-	
+
 	------------------------------------------
 	-- PART 2: Create the Wait_Until_Aborted entry
 	------------------------------------------
-        
-    end Transaction_Manager;
+    entry Wait_Until_Aborted when Aborted is
+    begin
+      if Wait_Until_Aborted'Count = 0 then
+        Aborted := False;
+      end if;
+    end Wait_Until_Aborted;
+
+  end Transaction_Manager;
 
 
 
-    
+
     function Unreliable_Slow_Add (x : Integer) return Integer is
     Error_Rate : Constant := 0.15;  -- (between 0 and 1)
     begin
-       if Random(Gen) > Error_Rate then
-	  delay Duration(Random(Gen) * 5.0);
-	  return X + 10;
-       else 
-	  delay Duration(Random(Gen) * 1.0);
-	  raise Count_Failed;
-       end if;
+      if Random(Gen) > Error_Rate then
+    	  delay Duration(Random(Gen) * 5.0);
+    	  return X + 10;
+      else
+    	  delay Duration(Random(Gen) * 1.0);
+    	  raise Count_Failed;
+      end if;
     end Unreliable_Slow_Add;
 
 
@@ -80,33 +84,35 @@ procedure exercise8 is
         loop
             Put_Line ("Worker" & Integer'Image(Initial) & " started round" & Integer'Image(Round_Num));
             Round_Num := Round_Num + 1;
-	    
+
 	    ------------------------------------------
             -- PART 1: Select-Then-Abort statement
             ------------------------------------------
-	    
-	    begin
-	       Num := Unreliable_Slow_Add(Num);
-	    exception
-	       when Count_Failed =>
-		  Manager.Signal_Abort;
-	    end;
-	    
-	    Manager.Finished;
-            
-            if Manager.Commit = True then
-                Put_Line ("  Worker" & Integer'Image(Initial) & " comitting" & Integer'Image(Num));
-            else
-                Put_Line ("  Worker" & Integer'Image(Initial) &
-                             " reverting from" & Integer'Image(Num) &
-			    " to" & Integer'Image(Prev));
-		
-		Num := Prev;
-		
-            end if;
 
-            Prev := Num;
-            delay 0.5;
+      select
+        Manager.Wait_Until_Aborted;
+        Num := Prev + 5;
+        Put_Line ("  Worker" & Integer'Image(Initial) & " adding 5 committing" & Integer'Image(Num));
+      then abort
+        begin
+           Num := Unreliable_Slow_Add(Num);
+           Put_Line ("  Worker" & Integer'Image(Initial) & " adding 10 committing" & Integer'Image(Num));
+           exception
+     	       when Count_Failed =>
+     		     Manager.Signal_Abort;
+        end;
+        Manager.Finished;
+       end select;
+
+
+
+
+
+      --Put_Line ("  Worker" & Integer'Image(Initial) & " comitting" & Integer'Image(Num));
+
+
+        Prev := Num;
+        delay 0.5;
 
         end loop;
     end Transaction_Worker;
@@ -120,4 +126,3 @@ procedure exercise8 is
 begin
     Reset(Gen); -- Seed the random number generator
 end exercise8;
-

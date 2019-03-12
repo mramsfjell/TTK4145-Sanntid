@@ -4,9 +4,11 @@
 
 ### Task 1:
  1. Why do we assign priorities to tasks?
+      For å sikre at viktige oppgaver blir utført i tide, og vi vet best
  2. What features must a scheduler have for it to be usable for real-time systems?
+      Må vite om tidsfrister, resurs begrensninger, statisk og dynamisk prioritering
 
- 
+
 
 ## Inversion and inheritance
 
@@ -56,5 +58,3 @@ Utilization:
 
 Response-time:  
 ![w_{i}^{n+1} = C_i + \sum_{j \in hp(i)} \bigg \lceil {\frac{w_i^n}{T_j}} \bigg \rceil C_j](eqn-responsetime.png)
-
-
