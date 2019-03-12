@@ -152,7 +152,7 @@ defmodule Lift do
        data
       |> add_order(order)
       |> update_direction
-      |> mooving_transition
+      |> at_floor(data.floor)
     end
   end
 
@@ -179,7 +179,7 @@ defmodule Lift do
     if order_at_floor?(new_order,floor) do
       door_open_transition(data)
     else
-      data
+      mooving_transition(data)
     end
   end
 
