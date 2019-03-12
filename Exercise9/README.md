@@ -30,7 +30,10 @@
 
 ### Task 3: Explain:
  1. What is priority inversion? What is unbounded priority inversion?
- 3. Does priority inheritance avoid deadlocks?
+      Høyere  prioritert oppgave må vente på oppgaver med lavere prioritet.
+      Det er ingen grense på hvor lenge en trå kan være blokkert av en trå med lavere prioritet
+ 2. Does priority inheritance avoid deadlocks?
+      Nei, lavere prioritert kan være avhengig av en resusr som er låst av den høysete for å bli ferdig med den resursen so blokkerer den høysete
 
 
 
@@ -47,8 +50,16 @@
 
 ### Task 4:
  1. There are a number of assumptions/conditions that must be true for the utilization and response time tests to be usable (The "simple task model"). What are these assumptions? Comment on how realistic they are.
+  Alle oppgaver er periodiske
+  Deadline er relativ til starttidspunkt
+  Alle oppgaver er uavhengige
+  Alle oppgaver kan avbrytes til en hver tid
+  Prossessorkraft er begrensningen
+
  2. Perform the utilization test for the task set. Is the task set schedulable?
+      nei U = 0.883 > 0.77
  3. Perform response-time analysis for the task set. Is the task set schedulable? If you got different results than in 2), explain why.
+
  4. (Optional) Draw a Gantt chart to show how the task set executes using rate monotonic priority assignment, and verify that your conclusions are correct.
 
 ## Formulas
