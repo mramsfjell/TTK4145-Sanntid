@@ -22,9 +22,9 @@ defmodule PollerServer do
     }
   end
 
-  def handle_cast {:new_order, order}, [] do
-
-    OrderDistribution.new_order(order)
+  #Callbacks
+  def handle_cast {:new_order, floor,button_type}, [] do
+    OrderDistribution.new_order(floor,button_type)
     {:noreply, []}
   end
 
@@ -34,15 +34,21 @@ defmodule PollerServer do
   end
 end
 
+
+
 defmodule ButtonPoller.Supervisor do
+  @moduledoc """
+  A module for registrating a single event when a buttonevent is beeing triggered in a
+  sequence, eg. a button is pressed and held for some seconds.
+
+  """
   use Supervisor
 
   def start_link (floors) do
     Supervisor.start_link(__MODULE__,{:ok,floors},[name: Button.Supervisor])
   end
 
-
- # 
+ #
   def init({:ok,[floors]}) do
     children = Enum.flat_map(0..(floors-1), fn floor ->
       child =
@@ -72,8 +78,8 @@ defmodule ButtonPoller do
   """
   use Task
 
-  def start_link(button_info) do
-    Task.start_link(__MODULE__, :button_poll, [button_info])
+  def start_link(args = [floor,button_type]) do
+    Task.start_link(__MODULE__, :button_poll, [floor,button_type,:off])
   end
 
   def child_spec([id|button_info]) do
@@ -85,10 +91,48 @@ defmodule ButtonPoller do
   end
 end
 
+  #State transitions
+  def poller(floor,button_type,:released) do
+    :timer.sleep(200)
+    case Driver.get_order_button_state(floor,button_type) do
+      0 ->
+        poller(floor,button_type,:released)
+      1->
+        poller(floor,button_type,:rising_edge)
+    end
+  end
+
+  def poller(floor,button_type,:rising_edge) do
+    PollerServer.new_order(order)
+    poller(floor,button_type,:pushed)
+  end
+
+  def poller(floor,button_type,:pushed) do
+    :timer.sleep(200)
+    case Driver.get_order_button_state(floor,button_type) do
+      0 ->
+        poller(floor,button_type,:released)
+      1->
+        poller(floor,button_type,:pushed)
+    end
+end
+
 
 defmodule FloorPoller do
   @moduledoc """
+  A module for registrating a single event when a floorevent is beeing triggered in a
+  sequence, eg. the floor sensor is high when a floor is reached and the lift stays
+  at the floor.
 
+  The state machine starts of in :idle-state which means the sensor has triggered
+  an event and is now to wait for the next thing to happen. If
+  get_floor_sensor_state isn't high, the lift is inbetween floors. If not, the
+  :idle-state loops.
+
+  When a lift is between two floors, the result from Driver.get_floor_sensor_state
+  is used as an argument for poller(). If Driver.get_floor_sensor_state returns
+  an int, the function PollerServer.at_floor is called and the state is set to
+  :idle.
   """
 
   use Task
@@ -105,6 +149,7 @@ defmodule FloorPoller do
     }
   end
 
+  #State transitions
   def poller(:idle) do
     :timer.sleep(200)
     case Driver.get_floor_sensor_state() do
