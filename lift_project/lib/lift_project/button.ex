@@ -17,8 +17,8 @@ defmodule IO.Button do
     case Driver.get_order_button_state(floor,button) do
       1 -> IO.puts "#{button} at floor #{floor} pushed"
             #Elevator.Orderlist.add(:order_list,floor,button)
-            Process.sleep(1000)
-      0 -> Process.sleep(100)
+            Process.sleep(2000)
+      0 -> Process.sleep(500)
     end
     button_poll(button_info)
   end
@@ -33,12 +33,12 @@ defmodule FloorSensor do
   def floor_sensor_poll() do
     case Driver.get_floor_sensor_state() do
       :between_floors ->
-        Process.sleep(100)
+        Process.sleep(200)
         floor_sensor_poll()
       floor ->
         Driver.set_floor_indicator(floor)
         Lift.at_floor(floor)
-        Process.sleep(200)
+        Process.sleep(1000)
         floor_sensor_poll()
     end
   end
