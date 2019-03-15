@@ -1,6 +1,6 @@
 defmodule Order do
 
-  defstruct [:floor,:button_type,:time,node: nil,watch_node: nil]
+  defstruct [:floor,:button_type,:time,node: nil,watch_dog: nil]
   @valid_order [:hall_down, :cab, :hall_up]
   @enforce_keys [:floor,:button_type]
 
@@ -113,7 +113,8 @@ end
       state
       |> add_order(order)
       |> assign_new_lift_order
-      #|> assign_watch_dog
+      #Only set cab-light in own cab
+      Driver.set_order_button_light(order.floor,order.button_type,:on)
     {:reply,order,new_state}
   end
 
@@ -128,7 +129,7 @@ end
       state
       |> remove_order(order)
       #Notify watch_dog
-    {:noreply,state}
+    {:noreply,new_state}
   end
 
 
@@ -143,9 +144,10 @@ end
     Enum.reduce(orders, state, fn(order,int_state) -> remove_order(int_state,order) end)
   end
 
-  def remove_order(state, %Order{node: node, time: time} = order) do
-    {_complete_order,new_state} = pop_in(state, [:active,node,time])
-    add_order_to_list(new_state,:complete,order)
+  def remove_order(state, %Order{node: node_name, time: time} = order) do
+    {_complete_order,new_state} = pop_in(state, [:active,node_name,time])
+    Driver.set_order_button_light(order.floor,order.button_type,:off)
+    #add_order_to_list(new_state,:complete,order)
   end
 
 
@@ -168,9 +170,9 @@ end
     order.floor == floor and order.button_type in @down_dir
   end
 
-  def fetch_orders(orders,node,floor,dir) do
+  def fetch_orders(orders,node_name,floor,dir) do
     orders
-    |> Map.fetch!(node)
+    |> Map.fetch!(node_name)
     |> Map.values
     |> Enum.filter(fn order -> order_at_floor?(order,floor,dir) end)
   end
@@ -269,6 +271,6 @@ end
 
 
   def calculate_cost(order,state) do
-    count_orders(state)
+    count_orders(state)+abs(order.floor-state.floor)
   end
 end

@@ -11,11 +11,15 @@ defmodule LiftProject.Application do
     children = [
       {Driver,[]},
       {Lift,[]},
-      {FloorSensor,[]},
-      {OrderServer,[@floors]}
+      #{FloorSensor,[]},
+      {OrderDistribution,[]},
+      {OrderServer,[@floors]},
+      {ButtonPoller.Supervisor,[4]},
+      {FloorPoller,[:floor]}
       # Starts a worker by calling: LiftProject.Worker.start_link(arg)
       # {LiftProject.Worker, arg}
     ]
+    Node.set_cookie(:HEI) 
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options

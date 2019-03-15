@@ -133,7 +133,7 @@ defmodule Lift do
     OrderServer.at_floor(floor,data.dir)
     OrderServer.lift_ready()
     data
-      |>Map.put(:floor, :floor)
+      |>Map.put(:floor, floor)
       |>Map.put(:state, :idle)
   end
 

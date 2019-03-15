@@ -1,40 +1,3 @@
-# Tell lift that lift is at_floor
-# Set floor indicators and cab lights
-# Set hall lights from OrderServer
-# Poll button_push
-
-defmodule PollerServer do
-  @moduledoc """
-
-  """
-
-  use Task
-
-  def start_link(button_info) do
-    Task.start_link(__MODULE__, :button_poll, [button_info])
-  end
-
-  def child_spec([id|button_info]) do
-    %{id: id,
-      start: {__MODULE__,:start_link,[button_info]},
-      restart: :permanent,
-      type: :worker
-    }
-  end
-
-  #Callbacks
-  def handle_cast {:new_order, floor,button_type}, [] do
-    OrderDistribution.new_order(floor,button_type)
-    {:noreply, []}
-  end
-
-  def handle_cast {:at_floor, floor}, [] do
-    Lift.at_floor(floor)
-    {:noreply, []}
-  end
-end
-
-
 
 defmodule ButtonPoller.Supervisor do
   @moduledoc """
@@ -44,24 +7,24 @@ defmodule ButtonPoller.Supervisor do
   """
   use Supervisor
 
-  def start_link (floors) do
+  def start_link ([floors]) do
     Supervisor.start_link(__MODULE__,{:ok,floors},[name: Button.Supervisor])
   end
 
  #
-  def init({:ok,[floors]}) do
+  def init({:ok,floors}) do
     children = Enum.flat_map(0..(floors-1), fn floor ->
       cond do
         floor == 0 ->
-            [IO.Button.child_spec(["u"<>to_string(floor),:hall_up,floor]),
-             IO.Button.child_spec(["c"<>to_string(floor),:cab,floor])]
+            [ButtonPoller.child_spec(["u"<>to_string(floor),floor,:hall_up]),
+             ButtonPoller.child_spec(["c"<>to_string(floor),floor,:cab])]
         floor == (floors-1) ->
-            [IO.Button.child_spec(["d"<>to_string(floor),:hall_down,floor]),
-             IO.Button.child_spec(["c"<>to_string(floor),:cab,floor])]
+            [ButtonPoller.child_spec(["d"<>to_string(floor),floor,:hall_down]),
+             ButtonPoller.child_spec(["c"<>to_string(floor),floor,:cab])]
         (0 < floor) and (floor < (floors-1)) ->
-            [IO.Button.child_spec(["u"<>to_string(floor),:hall_up,floor]),
-             IO.Button.child_spec(["d"<>to_string(floor),:hall_down,floor]),
-             IO.Button.child_spec(["c"<>to_string(floor),:cab,floor])]
+            [ButtonPoller.child_spec(["u"<>to_string(floor),floor,:hall_up]),
+             ButtonPoller.child_spec(["d"<>to_string(floor),floor,:hall_down]),
+             ButtonPoller.child_spec(["c"<>to_string(floor),floor,:cab])]
       end
     end)
 
@@ -77,7 +40,7 @@ defmodule ButtonPoller do
   use Task
 
   def start_link([floor,button_type]) do
-    Task.start_link(__MODULE__, :button_poll,[floor, button_type, :off])
+    Task.start_link(__MODULE__, :poller,[floor, button_type, :released])
   end
 
   def child_spec([id|button_info]) do
@@ -97,23 +60,31 @@ defmodule ButtonPoller do
         poller(floor,button_type,:released)
       1->
         poller(floor,button_type,:rising_edge)
+      {:error,:timeout} ->
+        poller(floor,button_type,:released)
     end
   end
 
   def poller(floor,button_type,:rising_edge) do
-    PollerServer.new_order(floor, button_type)
+    #IO.puts("Tester")
+    OrderDistribution.new_order(floor,button_type)
     poller(floor,button_type,:pushed)
   end
 
   def poller(floor,button_type,:pushed) do
     :timer.sleep(200)
+    #testvar = Driver.get_order_button_state(floor,button_type)
+    #IO.inspect(testvar)
     case Driver.get_order_button_state(floor,button_type) do
       0 ->
         poller(floor,button_type,:released)
       1->
+        #IO.puts("PUSHED")
         poller(floor,button_type,:pushed)
+      {:error,:timeout} ->
+        poller(floor,button_type,:released)
     end
-end
+  end
 end
 
 defmodule FloorPoller do
@@ -135,13 +106,13 @@ defmodule FloorPoller do
 
   use Task
 
-  def start_link(floor_info) do
-    Task.start_link(__MODULE__, :floor_poll, [floor_info])
+  def start_link() do
+    Task.start_link(__MODULE__, :poller, [:idle])
   end
 
-  def child_spec([id|floor_info]) do
+  def child_spec([id]) do
     %{id: id,
-      start: {__MODULE__,:start_link,[floor_info]},
+      start: {__MODULE__,:start_link,[]},
       restart: :permanent,
       type: :worker
     }
@@ -164,7 +135,8 @@ defmodule FloorPoller do
   end
 
   def poller(floor) do
-    PollerServer.at_floor(floor)
+    Lift.at_floor(floor)
+    Driver.set_floor_indicator(floor)
     poller(:idle)
   end
 end
