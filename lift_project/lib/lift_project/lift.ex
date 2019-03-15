@@ -19,7 +19,7 @@ end
 
 defmodule Lift do
   @moduledoc """
-   Provides a function `hello/1` to greet a human
+   Statemachine for controlling the lift. Keeps track of one order at a time.
    """
   use GenServer
 
@@ -93,7 +93,7 @@ defmodule Lift do
   end
 
   def handle_call(:get_state,_from,data) do
-    {:reply,data,data}
+    {:reply,{data.floor,data.dir},data}
   end
 
 
@@ -160,7 +160,11 @@ defmodule Lift do
   end
 
   defp new_order_event(%Lift{} = data, %LiftOrder{} = order) do
-    add_order(data,order)
+    if feasable_order?(data,order) do
+      add_order(data,order)
+    else
+      data
+    end
   end
 
   defp at_floor_event(%Lift{floor: floor, order: order} = data) do
@@ -200,5 +204,13 @@ defmodule Lift do
     else
       Map.put(data, :dir, :down)
     end
+  end
+
+  defp feasable_order?(%Lift{floor: floor, dir: :up} = data, %LiftOrder{} = order) do
+    order.floor >= floor
+  end
+
+  defp feasable_order?(%Lift{floor: floor, dir: :down} = data, %LiftOrder{} = order) do
+    order.floor <= floor
   end
 end

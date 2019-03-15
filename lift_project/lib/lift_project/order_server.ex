@@ -42,10 +42,6 @@ defmodule OrderServer do
   def lift_ready() do
     GenServer.cast(@name,{:lift_ready})
   end
-  #def order_complete(nil) do
-    #GenServer.cast(@name,{:lift_ready})
-  #end
-
 
   def order_complete(%Order{} = order) do
     GenServer.cast(@name,{:order_complete,order})
@@ -65,14 +61,20 @@ defmodule OrderServer do
 
   #Callbacks
   def init([floors]) do
+    {floor,dir} =
+      case Process.whereis(:Lift_FSM) do
+        nil -> {nil,nil}
+        pid -> Lift.get_state()
+      end
     state = %{
       active: %{Node.self => %{}},
       complete: %{Node.self => %{}},
-      floor: nil,
-      dir: nil,
+      floor: floor,
+      dir: dir,
       last_order: nil,
       floors: floors
     }
+
     {:ok,%{} = state}
   end
 
@@ -196,7 +198,9 @@ end
       end)
   end
 
-  def fetch_next_order(%{floor: floor, floors: top_floor, dir: dir} = state) do
+
+  def fetch_next_order(%{floor: floor, floors: top_floor, dir: dir} = state)
+  when is_integer(floor) and is_atom(:dir) do
     state
     |> Map.fetch!(:active)
     |> Map.fetch!(Node.self)
@@ -205,12 +209,12 @@ end
   end
 
   def fetch_next_order(orders,floor,dir, top_floor)
-    when is_list(orders) and length(orders) == 0 do
+    when is_list(orders) and length(orders) == 0 and is_integer(floor) do
       nil
   end
 
   def fetch_next_order(orders,floor,:up, top_floor)
-    when is_list(orders) do
+    when is_list(orders) and length(orders) != 0 and is_integer(floor) do
     next_order = orders
     |> Enum.filter(fn order -> order.button_type in @up_dir end)
     |> Enum.filter(fn order -> order.floor >= floor end)
@@ -224,7 +228,7 @@ end
   end
 
   def fetch_next_order(orders,floor,:down, top_floor)
-    when is_list(orders) and length(orders) != 0 do
+    when is_list(orders) and length(orders) != 0 and is_integer(floor) do
     next_order = orders
     |> Enum.filter(fn order -> order.button_type in @down_dir end)
     |> Enum.filter(fn order -> order.floor <= floor end)
