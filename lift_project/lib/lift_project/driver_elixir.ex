@@ -20,7 +20,7 @@ defmodule Driver do
   end
 
   def init [address, port] do
-    {:ok, socket} =:gen_tcp.connect(address, port, [{:active, false}])
+    {:ok, socket} = :gen_tcp.connect(address, port, [{:active, false}])
     {:ok, socket}
   end
 

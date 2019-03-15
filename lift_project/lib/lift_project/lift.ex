@@ -36,7 +36,7 @@ defmodule Lift do
     GenServer.cast(@name,{:at_floor,floor})
   end
 
-  def new_order(floor,dir) do
+  def new_order({floor,dir}) do
     order = LiftOrder.new(floor,dir)
     GenServer.cast(@name, {:new_order,order})
   end
@@ -54,9 +54,9 @@ defmodule Lift do
         :between_floors ->
           Driver.set_motor_direction(:up)
           %Lift{
-            state: :mooving,
+            state: :init,
             order: nil,
-            floor: 0,
+            floor: nil,
             dir: :up
             }
 
@@ -76,17 +76,19 @@ defmodule Lift do
   end
 
   def handle_cast({:at_floor,floor}, data) do
+    OrderServer.at_floor(floor,data.dir)
     new_data =
     case data.state do
-      :mooving      -> at_floor(data,floor)
-      _other_state  -> data
+      :mooving      -> at_floor_event(data,floor)
+      :init         -> complete_init(data,floor)
+      _other_state  -> data #this can be remooved when io is working
     end
     {:noreply,%Lift{} = new_data}
   end
 
 
-  def handle_cast({:new_order, order}, %Lift{state: state} = data) do
-    new_data = handle_new_order(data,order)
+  def handle_cast({:new_order, order}, data) do
+    new_data = new_order_event(data,order)
     {:noreply,%Lift{} = new_data}
   end
 
@@ -96,7 +98,7 @@ defmodule Lift do
 
 
   def handle_info(:close_door,data = %Lift{state: :door_open}) do
-    new_data = hande_door_close(data)
+    new_data = door_close_event(data)
     {:noreply,%Lift{} = new_data}
   end
 
@@ -126,24 +128,25 @@ defmodule Lift do
     Map.put(data, :state, :idle)
   end
 
-  #Helper functions
-  defp hande_door_close(%Lift{} = data) do
+  defp complete_init(data,floor) do
+    Driver.set_motor_direction(:stop)
+    OrderServer.at_floor(floor,data.dir)
+    OrderServer.lift_ready()
+    data
+      |>Map.put(:floor, :floor)
+      |>Map.put(:state, :idle)
+  end
+
+  #Events
+  defp door_close_event(%Lift{order: order} = data) do
     Driver.set_door_open_light(:off)
-    data = Map.put(data,:order,nil) #Remoove when OrderServer implemented
-    #OrderServer.order_complete(data.order)
-    new_data =
-      case  request_new_order(data) do
-        nil
-          ->  idle_transition(data)
-        order->
-            data
-            |> add_order(order)
-            |> mooving_transition()
-    end
+    OrderServer.order_complete(data.order.floor,data.order.dir)
+    data = Map.put(data,:order,nil)
+    idle_transition(data)
   end
 
 
-  defp handle_new_order(%Lift{state: :idle} = data, %LiftOrder{} = order) do
+  defp new_order_event(%Lift{state: :idle} = data, %LiftOrder{} = order) do
     if order_at_floor?(order,data.floor) do
       data
       |> add_order(order)
@@ -151,53 +154,41 @@ defmodule Lift do
     else
        data
       |> add_order(order)
-      |> update_direction
-      |> at_floor(data.floor)
+      |> update_direction()
+      |> at_floor_event()
     end
   end
 
-  defp handle_new_order(%Lift{} = data, %LiftOrder{} = order) do
-    data
+  defp new_order_event(%Lift{} = data, %LiftOrder{} = order) do
+    add_order(data,order)
   end
 
-  defp at_floor(%Lift{order: order,dir: dir} = data,floor)
-  when is_integer(floor) do
+  defp at_floor_event(%Lift{floor: floor, order: order} = data) do
     IO.puts "at floor#{floor}"
-    data = Map.put(data,:floor,floor)
-    if order_at_floor?(order,floor,dir) do
-      door_open_transition(data)
-    else
-      new_order = request_new_order(data)
-      data
-      |> add_order(new_order)
-      |> update_direction
-      |> at_floor(new_order)
-    end
-  end
-
-  defp at_floor(%Lift{floor: floor} = data,%LiftOrder{} = new_order) do
-    if order_at_floor?(new_order,floor) do
+    if order_at_floor?(order,floor) do
       door_open_transition(data)
     else
       mooving_transition(data)
     end
   end
 
-  defp request_new_order(%Lift{floor: floor, dir: dir} = data) do
-    #OrderServer.at_floor(floor,dir)
-    data.order
+  defp at_floor_event(data,floor) do
+    data
+    |> Map.put(:floor,floor)
+    |> at_floor_event()
   end
 
+  #Helper functions
   defp order_at_floor?(%LiftOrder{} = order,floor,dir) do
     order.floor == floor and order.dir == dir
   end
 
-  defp order_at_floor?(nil,_floor,_dir), do: true
-  defp order_at_floor?(nil,_floor), do: true
-
   defp order_at_floor?(%LiftOrder{} = order,floor) do
     order.floor == floor
   end
+
+  defp order_at_floor?(nil,_floor,_dir), do: true
+  defp order_at_floor?(nil,_floor), do: true
 
   defp add_order(%Lift{} = data,order) do
     Map.put(data,:order, order)

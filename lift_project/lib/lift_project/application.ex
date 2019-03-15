@@ -4,13 +4,15 @@ defmodule LiftProject.Application do
   @moduledoc false
 
   use Application
+  @floors 4
 
   def start(_type, _args) do
     # List all child processes to be supervised
     children = [
       {Driver,[]},
       {Lift,[]},
-      {FloorSensor,[]}
+      {FloorSensor,[]},
+      {OrderServer,[@floors]}
       # Starts a worker by calling: LiftProject.Worker.start_link(arg)
       # {LiftProject.Worker, arg}
     ]

@@ -10,7 +10,7 @@ defmodule Order do
       %Order{
         floor: floor,
         button_type: button_type,
-        time: Time.utc_now()|> Time.truncate(:second),
+        time: Time.utc_now()|> Time.truncate(:millisecond),
         node: Node.self
       }
   end
@@ -18,13 +18,15 @@ end
 
 defmodule OrderServer do
   @valid_dir [:up,:down]
+  @up_dir [:cab,:hall_up]
+  @down_dir [:cab,:hall_down]
   @name :order_server
   use GenServer
 
   #%{active: %{node%{time%{order}}}, complete: %{node%{time%{order}}}, :floors}
 
-  def start_link(_args)do
-    GenServer.start_link(__MODULE__,[],[name: @name])
+  def start_link([floors])do
+    GenServer.start_link(__MODULE__,[floors],[name: @name])
   end
 
   def at_floor(floor,dir) do
@@ -36,6 +38,14 @@ defmodule OrderServer do
   do
     GenServer.cast(@name,{:order_complete,floor,dir})
   end
+
+  def lift_ready() do
+    GenServer.cast(@name,{:lift_ready})
+  end
+  #def order_complete(nil) do
+    #GenServer.cast(@name,{:lift_ready})
+  #end
+
 
   def order_complete(%Order{} = order) do
     GenServer.cast(@name,{:order_complete,order})
@@ -54,13 +64,14 @@ defmodule OrderServer do
   end
 
   #Callbacks
-  def init(_args) do
+  def init([floors]) do
     state = %{
       active: %{Node.self => %{}},
       complete: %{Node.self => %{}},
       floor: nil,
       dir: nil,
-      last_order: nil
+      last_order: nil,
+      floors: floors
     }
     {:ok,state}
   end
@@ -75,15 +86,21 @@ defmodule OrderServer do
 
   def handle_cast({:order_complete,floor,dir},state) do
     orders = fetch_orders(state.active, Node.self,floor,dir)
+    IO.inspect(orders)
     broadcast_complete_order(orders)
     new_state =
       state
-      |> Map.put(last_order: nil)
+      |> Map.put(:last_order, nil)
       |> remove_orders(orders)
       |> assign_new_lift_order
     #Notify watch dog
     {:noreply,new_state}
   end
+
+  def handle_cast({:lift_ready},state) do
+    new_state = assign_new_lift_order(state)
+    {:noreply,new_state}
+end
 
   def handle_call({:evaluate_cost,order},_from,state) do
     cost = calculate_cost(order,state)
@@ -95,7 +112,7 @@ defmodule OrderServer do
     new_state =
       state
       |> add_order(order)
-      #|> assign_new_lift_order
+      |> assign_new_lift_order
       #|> assign_watch_dog
     {:reply,order,new_state}
   end
@@ -144,18 +161,18 @@ defmodule OrderServer do
   end
 
   def order_at_floor?(order,floor,:up) do
-    order.floor == floor and (order.button_type == :cab or order.button_type == :hall_up)
+    order.floor == floor and order.button_type in @up_dir
   end
 
-  def order_at_floor?(%Order{floor: o_floor, button_type: button},floor,:down) do
-    o_floor == floor and (button == :cab or button== :hall_down)
+  def order_at_floor?(%Order{} = order,floor,:down) do
+    order.floor == floor and order.button_type in @down_dir
   end
 
   def fetch_orders(orders,node,floor,dir) do
     orders
     |> Map.fetch!(node)
     |> Map.values
-    |> Enum.filter(&order_at_floor?(&1,floor,dir))
+    |> Enum.filter(fn order -> order_at_floor?(order,floor,dir) end)
   end
 
   def send_comlete_order(remote_node,order) do
@@ -169,38 +186,77 @@ defmodule OrderServer do
   end
 
 
-  def broadcast_complete_order(order) do
-    Node.list
-    |> Enum.each(fn(remote_node) ->
-        send_comlete_order(remote_node,order)
-    end)
+  def broadcast_complete_order(%Order{} = order) do
+    Enum.each(Node.list,fn remote_node ->
+      send_comlete_order(remote_node,order)
+      end)
   end
 
-  def next_order(%{floor: floor, dir: :up} = state) do
-    #Need to be smarter now only chooses closest order.
+  def fetch_next_order(%{floor: floor, floors: top_floor, dir: dir} = state) do
     state
     |> Map.fetch!(:active)
     |> Map.fetch!(Node.self)
     |> Map.values
-    |> Enum.min_by(fn order -> abs(order.floor - floor) end)
+    |> fetch_next_order(floor,dir,top_floor)
   end
 
-  def order_to_dir(order,state) do
-    dir =
-    case order.button_type do
-      :hall_up -> :up
-      :hall_down -> :down
-      :cab -> state.dir
+  def fetch_next_order(orders,floor,dir, top_floor)
+    when is_list(orders) and length(orders) == 0 do
+      nil
+  end
+
+  def fetch_next_order(orders,floor,:up, top_floor)
+    when is_list(orders) do
+    next_order = orders
+    |> Enum.filter(fn order -> order.button_type in @up_dir end)
+    |> Enum.filter(fn order -> order.floor >= floor end)
+    |> Enum.min_by(fn order -> order.floor end,fn -> nil end)
+    |>IO.inspect
+    IO.puts("up")
+    case next_order do
+      %Order{} -> next_order
+      nil      -> fetch_next_order(orders,top_floor,:down,top_floor)
     end
-    {state.floor,dir}
+  end
+
+  def fetch_next_order(orders,floor,:down, top_floor)
+    when is_list(orders) and length(orders) != 0 do
+    next_order = orders
+    |> Enum.filter(fn order -> order.button_type in @down_dir end)
+    |> Enum.filter(fn order -> order.floor <= floor end)
+    |> Enum.max_by(fn order -> order.floor end, fn -> nil end)
+    |>IO.inspect
+    IO.puts("down")
+    case next_order do
+      %Order{} -> next_order
+      nil      -> fetch_next_order(orders,0,:up,top_floor)
+    end
+  end
+
+  def order_to_dir(%{} = state,%Order{} = order) do
+      dir =
+      case order.button_type do
+        :hall_up -> :up
+        :hall_down -> :down
+        :cab -> state.dir
+      end
+    {order.floor,dir}
   end
 
   def assign_new_lift_order(state) do
-    next_order = next_order(state) |> order_to_dir
-    if next_order != state.last_order do
-      Lift.new_order(next_order)
-      Map.put(state,:last_order,next_order)
-    end
+    case fetch_next_order(state) do
+      nil   ->
+        Map.put(state,:last_order,nil)
+      order ->
+        next_order = order_to_dir(state,order)
+        if next_order != state.last_order do
+          Lift.new_order(next_order)
+          Map.put(state,:last_order,next_order)
+        else
+          Map.put(state,:last_order,nil)
+        end
+
+      end
   end
 
   def count_orders(state) do
