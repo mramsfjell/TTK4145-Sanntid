@@ -45,8 +45,9 @@ defmodule OrderDistribution do
     IO.inspect(new_order)
     new_order
       |> assign_watchdog(Node.list)
-      |> timestamp
+      #|> timestamp
       |> broadcast_result
+      #|> Format node names(remoove all after @)
     {:reply,:ok,state}
   end
 
@@ -75,11 +76,6 @@ defmodule OrderDistribution do
 
   def find_lowest_cost(replies) do
     {node_name, min_cost} = Enum.min_by(replies, fn({node_name,cost}) -> cost end)
-  end
-
-  def timestamp(order)do
-    timestamp = Time.utc_now |> Time.truncate(:millisecond)
-    Map.put(order,:time,timestamp)
   end
 
   def broadcast_result(order) do

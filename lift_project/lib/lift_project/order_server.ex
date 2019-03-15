@@ -10,7 +10,7 @@ defmodule Order do
       %Order{
         floor: floor,
         button_type: button_type,
-        time: Time.utc_now()|> Time.truncate(:millisecond),
+        time: Time.utc_now(),
         node: Node.self
       }
   end
@@ -73,7 +73,7 @@ defmodule OrderServer do
       last_order: nil,
       floors: floors
     }
-    {:ok,state}
+    {:ok,%{} = state}
   end
 
   def handle_cast({:at_floor,floor,dir},state) do
@@ -81,7 +81,7 @@ defmodule OrderServer do
       state
       |> Map.put(:floor,floor)
       |> Map.put(:dir,dir)
-    {:noreply,new_state}
+    {:noreply,%{} =new_state}
   end
 
   def handle_cast({:order_complete,floor,dir},state) do
@@ -91,20 +91,20 @@ defmodule OrderServer do
     new_state =
       state
       |> Map.put(:last_order, nil)
-      |> remove_orders(orders)
+      |> remove_order(orders)
       |> assign_new_lift_order
     #Notify watch dog
-    {:noreply,new_state}
+    {:noreply,%{} =new_state}
   end
 
   def handle_cast({:lift_ready},state) do
     new_state = assign_new_lift_order(state)
-    {:noreply,new_state}
+    {:noreply,%{} =new_state}
 end
 
   def handle_call({:evaluate_cost,order},_from,state) do
     cost = calculate_cost(order,state)
-    {:reply,cost,state}
+    {:reply,cost,%{} =state}
   end
 
 
@@ -115,12 +115,11 @@ end
       |> assign_new_lift_order
       #Only set cab-light in own cab
       Driver.set_order_button_light(order.floor,order.button_type,:on)
-    {:reply,order,new_state}
+    {:reply,order,%{} =new_state}
   end
 
   def handle_call({:get},_from, state) do
-    IO.inspect(state)
-    {:reply,{:ok,state},state}
+    {:reply,{:ok,state},%{} =state}
   end
 
   def handle_info({:order_complete,order},state) do
@@ -129,7 +128,7 @@ end
       state
       |> remove_order(order)
       #Notify watch_dog
-    {:noreply,new_state}
+    {:noreply,%{} = new_state}
   end
 
 
@@ -140,13 +139,16 @@ end
     add_order_to_list(state,:active,order)
   end
 
-  def remove_orders(state, orders) do
+  def remove_order(state, orders)
+  when is_list(orders)
+  do
     Enum.reduce(orders, state, fn(order,int_state) -> remove_order(int_state,order) end)
   end
 
   def remove_order(state, %Order{node: node_name, time: time} = order) do
     {_complete_order,new_state} = pop_in(state, [:active,node_name,time])
     Driver.set_order_button_light(order.floor,order.button_type,:off)
+    new_state
     #add_order_to_list(new_state,:complete,order)
   end
 
@@ -177,7 +179,7 @@ end
     |> Enum.filter(fn order -> order_at_floor?(order,floor,dir) end)
   end
 
-  def send_comlete_order(remote_node,order) do
+  def send_complete_order(remote_node,order) do
   #Do something to check that the message were sent?
     Process.send({:order_server,remote_node},{:order_complete,order},[:noconnect])
   end
@@ -190,7 +192,7 @@ end
 
   def broadcast_complete_order(%Order{} = order) do
     Enum.each(Node.list,fn remote_node ->
-      send_comlete_order(remote_node,order)
+      send_complete_order(remote_node,order)
       end)
   end
 
@@ -265,12 +267,12 @@ end
     state
     |> Map.fetch!(:active)
     |> Map.fetch!(Node.self)
-    |> Map.values
+    |> Map.values #Can be dropped?
     |> Enum.count()
   end
 
 
   def calculate_cost(order,state) do
-    count_orders(state)+abs(order.floor-state.floor)
+    5*count_orders(state)+abs(order.floor-state.floor)
   end
 end
