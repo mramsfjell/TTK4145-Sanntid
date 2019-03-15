@@ -51,8 +51,6 @@ defmodule ButtonPoller.Supervisor do
  #
   def init({:ok,[floors]}) do
     children = Enum.flat_map(0..(floors-1), fn floor ->
-      child =
-
       cond do
         floor == 0 ->
             [IO.Button.child_spec(["u"<>to_string(floor),:hall_up,floor]),
@@ -78,8 +76,8 @@ defmodule ButtonPoller do
   """
   use Task
 
-  def start_link(args = [floor,button_type]) do
-    Task.start_link(__MODULE__, :button_poll, [floor,button_type,:off])
+  def start_link([floor,button_type]) do
+    Task.start_link(__MODULE__, :button_poll,[floor, button_type, :off])
   end
 
   def child_spec([id|button_info]) do
@@ -89,7 +87,7 @@ defmodule ButtonPoller do
       type: :worker
     }
   end
-end
+
 
   #State transitions
   def poller(floor,button_type,:released) do
@@ -103,7 +101,7 @@ end
   end
 
   def poller(floor,button_type,:rising_edge) do
-    PollerServer.new_order(order)
+    PollerServer.new_order(floor, button_type)
     poller(floor,button_type,:pushed)
   end
 
@@ -116,7 +114,7 @@ end
         poller(floor,button_type,:pushed)
     end
 end
-
+end
 
 defmodule FloorPoller do
   @moduledoc """
