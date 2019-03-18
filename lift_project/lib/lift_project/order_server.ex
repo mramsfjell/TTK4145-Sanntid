@@ -1,5 +1,7 @@
 defmodule Order do
-
+  @moduledoc """
+  Defining the data structure for, and creation of a order. The timestamp is used as an order ID.
+  """
   defstruct [:floor,:button_type,:time,node: nil,watch_dog: nil]
   @valid_order [:hall_down, :cab, :hall_up]
   @enforce_keys [:floor,:button_type]
@@ -17,6 +19,9 @@ defmodule Order do
 end
 
 defmodule OrderServer do
+  @moduledoc """
+  This module keeps track of orders collected from OrderDistribution in addition to setting hall lights and path logic.
+  """
   @valid_dir [:up,:down]
   @up_dir [:cab,:hall_up]
   @down_dir [:cab,:hall_down]
@@ -29,32 +34,39 @@ defmodule OrderServer do
     GenServer.start_link(__MODULE__,[floors],[name: @name])
   end
 
+  #Casts that the lift is located at a floor
   def at_floor(floor,dir) do
     GenServer.cast(@name,{:at_floor,floor,dir})
   end
 
+  #Casting that an order has been completed given floor and direction
   def order_complete(floor,dir)
   when is_integer(floor) and dir in @valid_dir
   do
     GenServer.cast(@name,{:order_complete,floor,dir})
   end
 
-  def lift_ready() do
-    GenServer.cast(@name,{:lift_ready})
-  end
-
+  #Casting that an order has been completed given a full order struct
   def order_complete(%Order{} = order) do
     GenServer.cast(@name,{:order_complete,order})
   end
 
+  #Casting that a lift is ready for a new order
+  def lift_ready() do
+    GenServer.cast(@name,{:lift_ready})
+  end
+
+  #Calling for the cost of a lift potentially executing a order
   def evaluate_cost(order) do
     GenServer.call(@name,{:evaluate_cost,order})
   end
 
+  #Create new order
   def new_order(order) do
     GenServer.call(@name,{:new_order,order})
   end
 
+  #Get current orders
   def get_orders() do
     GenServer.call(@name,{:get})
   end
@@ -73,8 +85,7 @@ defmodule OrderServer do
       dir: dir,
       last_order: nil,
       floors: floors
-    }
-
+      }
     {:ok,%{} = state}
   end
 
@@ -102,13 +113,12 @@ defmodule OrderServer do
   def handle_cast({:lift_ready},state) do
     new_state = assign_new_lift_order(state)
     {:noreply,%{} =new_state}
-end
+  end
 
   def handle_call({:evaluate_cost,order},_from,state) do
     cost = calculate_cost(order,state)
     {:reply,cost,%{} =state}
   end
-
 
   def handle_call({:new_order,order},_from,state) do
     new_state =
@@ -134,9 +144,8 @@ end
   end
 
 
-
-
   #Helper functions
+  
   def add_order(state, order) do
     add_order_to_list(state,:active,order)
   end
@@ -274,7 +283,6 @@ end
     |> Map.values #Can be dropped?
     |> Enum.count()
   end
-
 
   def calculate_cost(order,state) do
     5*count_orders(state)+abs(order.floor-state.floor)

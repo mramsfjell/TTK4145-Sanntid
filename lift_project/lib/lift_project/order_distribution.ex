@@ -1,24 +1,22 @@
 defmodule OrderDistribution do
   @moduledoc """
-  This module takes care of distributing orders, both from IO and WatchDog.
-
+  This module takes care of distributing orders, both new orders from I/O and reinjected orders from WatchDog.
   """
-
-  # Need to be changed to Task if we want to handle several auctions at once
   use GenServer
 
   @name :order_distribution
   @valid_orders [:hall_down, :cab, :hall_up]
 
-
   def start_link(_args) do
     GenServer.start_link(__MODULE__, [], name: @name)
   end
 
+  #Reinjected order from WatchDog
   def new_order(order = %Order{}) do
     GenServer.call(@name, {:new_order,order})
   end
 
+  #New order from I/O
   def new_order(floor, button_type)
     when is_integer(floor) and button_type in @valid_orders
     do
@@ -29,7 +27,6 @@ defmodule OrderDistribution do
 
   # Callbacks
 
-  # Due to use of GenServer
   def init(_args) do
     {:ok,%{}}
   end
@@ -58,7 +55,6 @@ defmodule OrderDistribution do
       Map.put(order,:watch_dog,Node.self)
   end
 
-
   def assign_watchdog(order, node_list) do
     watch_dog =
       [Node.self|node_list] -- [order.node]
@@ -66,13 +62,11 @@ defmodule OrderDistribution do
     Map.put(order,:watch_dog,watch_dog)
   end
 
-
   def assign_node(order) do
       {replies, _bad_nodes} = GenServer.multi_call(:order_server,{:evaluate_cost, order}) |> IO.inspect()
       {node_name,_min_cost} = find_lowest_cost(replies) |> IO.inspect
       Map.put(order,:node,node_name) |> IO.inspect
   end
-
 
   def find_lowest_cost(replies) do
     {node_name, min_cost} = Enum.min_by(replies, fn({node_name,cost}) -> cost end)
@@ -81,5 +75,4 @@ defmodule OrderDistribution do
   def broadcast_result(order) do
     GenServer.multi_call(:order_server, {:new_order, order})
   end
-
 end
