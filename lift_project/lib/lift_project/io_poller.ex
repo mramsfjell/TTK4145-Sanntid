@@ -1,9 +1,7 @@
 
 defmodule ButtonPoller.Supervisor do
   @moduledoc """
-  A module for registrating a single event when a buttonevent is beeing triggered in a
-  sequence, eg. a button is pressed and held for some seconds.
-
+  Supervisor for the button poller.
   """
   use Supervisor
 
@@ -35,7 +33,9 @@ end
 
 defmodule ButtonPoller do
   @moduledoc """
-
+  Registrates a single event when a button event is beeing triggered in a
+  sequence, eg. the floor sensor is high when a floor is reached and the lift stays
+  at the floor.
   """
   use Task
 
@@ -51,8 +51,8 @@ defmodule ButtonPoller do
     }
   end
 
-
   #State transitions
+
   def poller(floor,button_type,:released) do
     :timer.sleep(200)
     case Driver.get_order_button_state(floor,button_type) do
@@ -89,19 +89,9 @@ end
 
 defmodule FloorPoller do
   @moduledoc """
-  A module for registrating a single event when a floorevent is beeing triggered in a
+  Registrates a single event when a floor event is beeing triggered in a
   sequence, eg. the floor sensor is high when a floor is reached and the lift stays
   at the floor.
-
-  The state machine starts of in :idle-state which means the sensor has triggered
-  an event and is now to wait for the next thing to happen. If
-  get_floor_sensor_state isn't high, the lift is inbetween floors. If not, the
-  :idle-state loops.
-
-  When a lift is between two floors, the result from Driver.get_floor_sensor_state
-  is used as an argument for poller(). If Driver.get_floor_sensor_state returns
-  an int, the function PollerServer.at_floor is called and the state is set to
-  :idle.
   """
 
   use Task
@@ -119,6 +109,7 @@ defmodule FloorPoller do
   end
 
   #State transitions
+
   def poller(:idle) do
     :timer.sleep(200)
     case Driver.get_floor_sensor_state() do
