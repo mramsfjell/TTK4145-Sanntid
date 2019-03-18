@@ -1,5 +1,4 @@
 defmodule WatchDog do
-  use
     @moduledoc """
     This module is meant to take care of any order not being handled within
     reasonable time, set by the timer length @watchdog_timer.
@@ -14,36 +13,83 @@ defmodule WatchDog do
 
     Use genserver whith list of all assigned orders. Use process.send_after to
     take care of expiered timers. Also handle Node down/up
-    Finn get_my_ip på kokeplata
     """
-    use Task
     @name :watch_dog
     @watchdog_timer 60_000
 
+    use GenServer
+    @cab_orders [:cab]
+    @hall_orders [:hall_up, :hall_down]
+
     def start_link(_args) do
-        Task.start_link(__MODULE__,[],name: @name)
+        GenServer.start_link(__MODULE__,[],name: @name)
     end
 
-    receive do
 
-
-    after @watchdog_timer
-
-    # Callbacks
-
-    def handle_info() do
-        Process.send_after(self(),{:timer_finished,order},@watchdog_timer)
+    #API------------------------------------------------------
+    def new_order(order) do
+      GenServer.call(@name,{:new_order,order})
     end
 
-    def handle_info(:order_complete) do
-        Process.exit(self(),:kill)
+    def order_complete(order) do
+      GenServer.cast(@name,{:order_complete,order})
     end
 
-    def handle_info({:timer_finished,order}) do
-        {_reply,reason,_state} = OrderDistribution.new_order(order)
-        case reason do
-            :ok -> Process.exit(self(),:kill)
-            _ -> Process.send(self(),{:timer_finished,order},[:noconnect])
-        end
+    #Callbacks-----------------------------------------------------
+    def init([]) do
+      :net_kernel.monitor_nodes(true)
+      state = %{active: %{}, stand_by: %{}}
+      {:ok,state}
+    end
+
+    def handle_call({:new_order,order},_from,state) do
+      new_state = put_in(state,[:active,order.time],order)
+      {:reply,:ok,new_state}
+    end
+
+    def handle_cast({:order_complete,order},state) do
+      {_complete, updated_state} = pop_in(state, [:active,order.time])
+      {:noreply,updated_state}
+    end
+
+    def handle_info({:nodedown,node_name},state) do
+      with
+      dead_node_orders <- fetch_node(state,node_name),
+      cab_orders   <- fetch_order_type(dead_node_orders,:cab),
+      hall_orders  <- fetch_order_type(dead_node_orders,:hall)
+      do
+        reinject_order(hall_orders)
+        updated_orders = moove_to_standby(state,cab_orders)
+        {:noreply,updated_orders}
+      end
+    end
+
+    def fetch_node(state,node_name) do
+      state
+        |> Map.get(:active)
+        |> Map.values
+        |> Enum.filter(fn order -> order.node == node_name end)
+    end
+
+    def fetch_order_type(orders,:cab) do
+      Enum.filter(orders,fn order -> order.button_type in @cab_orders end)
+    end
+
+    def fetch_order_type(orders,:hall) do
+      Enum.filter(orders,fn order -> order.button_type in @hall_orders end)
+    end
+
+    def reinject_order(orders)
+      when is_list(orders)
+      do
+        Enum.each(orders,fn order -> reinject_order(order) end)
+    end
+
+    def reinject_order(%Order{} = order) do
+      OrderDistribution.new_order(order)
+    end
+
+    def moove_to_standby(state,orders) do
+      state
     end
 end
