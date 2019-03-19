@@ -34,9 +34,9 @@ defmodule OrderServer do
     GenServer.start_link(__MODULE__,[floors],[name: @name])
   end
 
-  #Casts that the lift is located at a floor
-  def at_floor(floor,dir) do
-    GenServer.cast(@name,{:at_floor,floor,dir})
+  #Casts that the lift is leaving a floor
+  def leaving_floor(floor,dir) do
+    GenServer.cast(@name,{:lift_update,floor,dir})
   end
 
   #Casting that an order has been completed given floor and direction
@@ -89,24 +89,24 @@ defmodule OrderServer do
     {:ok,%{} = state}
   end
 
-  def handle_cast({:at_floor,floor,dir},state) do
+  def handle_cast({:lift_update,floor,dir},state) do
+    next_floor = floor + dir_to_int(dir)
     new_state =
       state
-      |> Map.put(:floor,floor)
+      |> Map.put(:floor,next_floor)
       |> Map.put(:dir,dir)
     {:noreply,%{} =new_state}
   end
 
   def handle_cast({:order_complete,floor,dir},state) do
     orders = fetch_orders(state.active, Node.self,floor,dir)
-    IO.inspect(orders)
+    #IO.inspect(orders)
     broadcast_complete_order(orders)
     new_state =
       state
       |> Map.put(:last_order, nil)
       |> remove_order(orders)
       |> assign_new_lift_order
-    #Notify watch dog
     {:noreply,%{} =new_state}
   end
 
@@ -135,17 +135,17 @@ defmodule OrderServer do
   end
 
   def handle_info({:order_complete,order},state) do
-    IO.inspect(order)
+    #IO.inspect(order)
     new_state =
       state
       |> remove_order(order)
-      #Notify watch_dog
+    WatchDog.order_complete(order)
     {:noreply,%{} = new_state}
   end
 
 
   #Helper functions
-  
+
   def add_order(state, order) do
     add_order_to_list(state,:active,order)
   end
@@ -228,7 +228,6 @@ defmodule OrderServer do
     |> Enum.filter(fn order -> order.button_type in @up_dir end)
     |> Enum.filter(fn order -> order.floor >= floor end)
     |> Enum.min_by(fn order -> order.floor end,fn -> nil end)
-    |>IO.inspect
     IO.puts("up")
     case next_order do
       %Order{} -> next_order
@@ -242,7 +241,6 @@ defmodule OrderServer do
     |> Enum.filter(fn order -> order.button_type in @down_dir end)
     |> Enum.filter(fn order -> order.floor <= floor end)
     |> Enum.max_by(fn order -> order.floor end, fn -> nil end)
-    |>IO.inspect
     IO.puts("down")
     case next_order do
       %Order{} -> next_order
@@ -287,4 +285,7 @@ defmodule OrderServer do
   def calculate_cost(order,state) do
     5*count_orders(state)+abs(order.floor-state.floor)
   end
+
+  def dir_to_int(:up), do:  1
+  def dir_to_int(:down), do: -1
 end

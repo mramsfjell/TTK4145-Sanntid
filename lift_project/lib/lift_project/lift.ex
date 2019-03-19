@@ -1,6 +1,6 @@
 defmodule LiftOrder do
   @moduledoc """
-   Defining the data structure for, and creation of a lift order. A lift order is a simpler 
+   Defining the data structure for, and creation of a lift order. A lift order is a simpler
    version of the full order, as this module only cares about running the lift in the right direction.
    """
   defstruct [:floor,:dir]
@@ -84,7 +84,6 @@ defmodule Lift do
   end
 
   def handle_cast({:at_floor,floor}, data) do
-    OrderServer.at_floor(floor,data.dir)
     new_data =
     case data.state do
       :mooving      -> at_floor_event(data,floor)
@@ -122,6 +121,7 @@ defmodule Lift do
   defp mooving_transition(%Lift{dir: dir} = data) do
     Driver.set_door_open_light(:off)
     new_state = Map.put(data, :state, :mooving)
+    OrderServer.leaving_floor(data.floor,data.dir)
     IO.puts("Mooving #{dir}")
     Driver.set_motor_direction(dir)
     new_state
@@ -137,7 +137,7 @@ defmodule Lift do
 
   defp complete_init(data,floor) do
     Driver.set_motor_direction(:stop)
-    OrderServer.at_floor(floor,data.dir)
+    #OrderServer.at_floor(floor,data.dir)
     OrderServer.lift_ready()
     data
       |>Map.put(:floor, floor)
