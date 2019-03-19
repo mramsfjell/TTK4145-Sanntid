@@ -16,7 +16,8 @@ defmodule LiftProject.Application do
       {OrderServer,[@floors]},
       {WatchDog, []},
       {ButtonPoller.Supervisor,[4]},
-      {FloorPoller,[:floor]}
+      {FloorPoller,[:floor]},
+      {NetworkHandler,[20_000]}
       # Starts a worker by calling: LiftProject.Worker.start_link(arg)
       # {LiftProject.Worker, arg}
     ]

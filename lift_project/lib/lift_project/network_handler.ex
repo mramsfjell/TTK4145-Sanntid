@@ -1,13 +1,13 @@
 defmodule NetworkHandler do
   use Supervisor
 
-  def start_link([send_port,recv_port]) do
-    Supervisor.start_link(__MODULE__,[send_port,recv_port], name: :network_handler)
+  def start_link([recv_port]) do
+    Supervisor.start_link(__MODULE__,[recv_port], name: :network_handler)
   end
 
-  def init([send_port,recv_port]) do
+  def init([recv_port]) do
     children = [
-      {UDP.Server,[send_port,recv_port]},
+      {UDP.Server,[recv_port]},
       {UDP.Client,[recv_port]}
     ]
     Supervisor.init(children, strategy: :one_for_one)
@@ -41,20 +41,21 @@ end
 
 defmodule UDP.Server do
   @sub_net {255,255,255,255}
+  @broadcast_intervall 1_000
   use Task
   def start_link(ports) do
     Task.start_link(__MODULE__,:init,ports)
   end
 
-  def init(send_port,recv_port) do
-    {:ok,socket} = :gen_udp.open(send_port,[:binary, active: false,broadcast: true])
+  def init(recv_port) do
+    {:ok,socket} = :gen_udp.open(0,[:binary, active: false,broadcast: true])
     IO.puts "UDP broadcast started"
     broadcast(socket,recv_port)
   end
 
   def broadcast(socket,recv_port) do
     :gen_udp.send(socket, @sub_net, recv_port, to_string(Node.self))
-    Process.sleep(1_000)
+    Process.sleep(@broadcast_intervall)
     broadcast(socket,recv_port)
   end
 end
