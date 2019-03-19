@@ -14,15 +14,17 @@ defmodule WatchDog do
     Use genserver whith list of all assigned orders. Use process.send_after to
     take care of expiered timers. Also handle Node down/up
     """
-    @name :watch_dog
-    @watchdog_timer 60_000
 
     use GenServer
+    @name :watch_dog
+    @watchdog_timer 1_000
+
     @cab_orders [:cab]
-    @hall_orders [:hall_up, :hall_down]
+    @hall_orders [:hall_up,:hall_down]
+
 
     def start_link(_args) do
-        GenServer.start_link(__MODULE__,[],name: @name)
+        GenServer.start_link(__MODULE__,[],[name: @name])
     end
 
 
@@ -35,6 +37,10 @@ defmodule WatchDog do
       GenServer.cast(@name,{:order_complete,order})
     end
 
+    def get_state() do
+      GenServer.call(@name,:get)
+    end
+
     #Callbacks-----------------------------------------------------
     def init([]) do
       :net_kernel.monitor_nodes(true)
@@ -43,26 +49,83 @@ defmodule WatchDog do
     end
 
     def handle_call({:new_order,order},_from,state) do
-      new_state = put_in(state,[:active,order.time],order)
+      new_state = add_order(state,:active,order)
+      Process.send_after(self(), {:order_expiered,order.time}, @watchdog_timer)
       {:reply,:ok,new_state}
     end
 
+    def handle_call(:get,_from,state) do
+      {:reply,state,state}
+    end
+
     def handle_cast({:order_complete,order},state) do
-      {_complete, updated_state} = pop_in(state, [:active,order.time])
+      updated_state = remove_order(state,:active,order)
       {:noreply,updated_state}
     end
 
+    def handle_info({:order_expiered,time_stamp},state) do
+      order = get_in(state, [:active,time_stamp])
+      IO.inspect(order)
+      reinject_order(order)
+      new_state = remove_order(state,:active,order)
+      {:noreply,new_state}
+    end
+
+
     def handle_info({:nodedown,node_name},state) do
-      with
-      dead_node_orders <- fetch_node(state,node_name),
-      cab_orders   <- fetch_order_type(dead_node_orders,:cab),
-      hall_orders  <- fetch_order_type(dead_node_orders,:hall)
+      IO.puts "NODE DOWN#{node_name}"
+      with dead_node_orders <- fetch_node(state,node_name),
+        cab_orders   <- fetch_order_type(dead_node_orders,:cab),
+        hall_orders  <- fetch_order_type(dead_node_orders,:hall)
       do
         reinject_order(hall_orders)
-        updated_orders = moove_to_standby(state,cab_orders)
-        {:noreply,updated_orders}
+        updated_state = moove_to_standby(state,cab_orders)
+        IO.inspect(updated_state)
+        {:noreply,updated_state}
+      else
+        _ ->
+          IO.puts "error in node down"
+          {:noreply,state}
       end
     end
+
+    def handle_info({:nodeup, node_name},state) do
+      standby_orders = state
+       |> Map.get(:stand_by)
+       |> Map.values
+       |> Enum.filter(fn order -> order.node == node_name end)
+
+      reinject_order(standby_orders)
+      new_state = remove_order(state,:stand_by,standby_orders)
+      {:noreply,new_state}
+    end
+
+
+
+    def add_order(state,order_state,order) do
+      put_in(state,[order_state,order.time],order)
+    end
+
+    def remove_order(state,_order_state,[]) do
+      state
+    end
+
+    def remove_order(state,order_state,orders)
+    when is_list(orders)
+    do
+      Enum.reduce(orders,state, fn order,int_state ->
+          IO.inspect({order,int_state})
+          remove_order(int_state,order_state,order)
+          end)
+    end
+
+    def remove_order(state,order_state,%Order{} = order)
+    when is_atom(order_state)
+    do
+       {_complete,new_state} = pop_in(state, [order_state,order.time])
+       new_state
+    end
+
 
     def fetch_node(state,node_name) do
       state
@@ -86,10 +149,30 @@ defmodule WatchDog do
     end
 
     def reinject_order(%Order{} = order) do
+      IO.inspect(order)
       OrderDistribution.new_order(order)
     end
 
-    def moove_to_standby(state,orders) do
-      state
+    def moove_to_standby(state,orders)
+    when is_list(orders) do
+      Enum.reduce(orders,state, fn order,int_state ->
+          moove_to_standby(int_state,order)
+          end)
+    end
+
+
+    def moove_to_standby(state, %Order{} = order) do
+      new_active =
+        state
+        |> Map.get(:active)
+        |> Map.delete(order.time)
+      new_standby =
+        state
+        |> Map.get(:stand_by)
+        |> Map.put(order.time,order)
+        #Rebuild map
+        IO.inspect(new_active)
+        IO.inspect(new_standby)
+        %{active: new_active, stand_by: new_standby}
     end
 end
