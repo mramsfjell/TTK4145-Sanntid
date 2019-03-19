@@ -38,13 +38,14 @@ defmodule OrderDistribution do
     else
       assign_node(order)
     end
-    IO.puts("result")
-    IO.inspect(new_order)
+
     new_order
       |> assign_watchdog(Node.list)
       #|> timestamp
       |> broadcast_result
       #|> Format node names(remoove all after @)
+      IO.puts("result")
+      IO.inspect(new_order)
     {:reply,:ok,state}
   end
 
@@ -63,8 +64,8 @@ defmodule OrderDistribution do
   end
 
   def assign_node(order) do
-      {replies, _bad_nodes} = GenServer.multi_call(:order_server,{:evaluate_cost, order}) |> IO.inspect()
-      {node_name,_min_cost} = find_lowest_cost(replies) |> IO.inspect
+      {replies, _bad_nodes} = GenServer.multi_call(:order_server,{:evaluate_cost, order})
+      {node_name,_min_cost} = find_lowest_cost(replies)
       Map.put(order,:node,node_name) |> IO.inspect
   end
 
@@ -74,5 +75,6 @@ defmodule OrderDistribution do
 
   def broadcast_result(order) do
     GenServer.multi_call(:order_server, {:new_order, order})
+    Node.spawn_link(order.watch_dog, WatchDog,:new_order,[order])
   end
 end
