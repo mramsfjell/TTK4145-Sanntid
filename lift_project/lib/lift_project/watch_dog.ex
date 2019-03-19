@@ -17,7 +17,7 @@ defmodule WatchDog do
 
     use GenServer
     @name :watch_dog
-    @watchdog_timer 1_000
+    @watchdog_timer 10_000
 
     @cab_orders [:cab]
     @hall_orders [:hall_up,:hall_down]
@@ -64,11 +64,16 @@ defmodule WatchDog do
     end
 
     def handle_info({:order_expiered,time_stamp},state) do
-      order = get_in(state, [:active,time_stamp])
-      IO.inspect(order)
-      reinject_order(order)
-      new_state = remove_order(state,:active,order)
-      {:noreply,new_state}
+      case get_in(state, [:active,time_stamp]) do
+        nil ->
+          {:noreply,state}
+        order ->
+          IO.puts "Order expiered"
+          IO.inspect(order)
+          reinject_order(order)
+          new_state = remove_order(state,:active,order)
+          {:noreply,new_state}
+      end
     end
 
 
