@@ -9,19 +9,20 @@ defmodule LiftProject.Application do
   def start(_type, _args) do
     # List all child processes to be supervised
     children = [
-      {Driver,[]},
-      {Lift,[]},
-      #{FloorSensor,[]},
-      {OrderDistribution,[]},
-      {OrderServer,[@floors]},
+      {Driver, []},
+      {Lift, []},
+      # {FloorSensor,[]},
+      {OrderDistribution, []},
+      {OrderServer, []},
       {WatchDog, []},
-      {ButtonPoller.Supervisor,[4]},
-      {FloorPoller,[:floor]},
-      {NetworkHandler,[20_000]}
+      {ButtonPoller.Supervisor, [@floors]},
+      {FloorPoller, [:floor]}
+      # {NetworkHandler, [20_000]}
       # Starts a worker by calling: LiftProject.Worker.start_link(arg)
       # {LiftProject.Worker, arg}
     ]
-    Node.set_cookie(:HEI)
+
+    # Node.set_cookie(:HEI)
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
