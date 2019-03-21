@@ -1,6 +1,5 @@
 defmodule OrderServer.CostTest do
   use ExUnit.Case, async: true
-  use ExUnitProperties
   doctest OrderServer.Cost
 
   test "Path length handles empty order list" do
@@ -115,12 +114,5 @@ defmodule OrderServer.CostTest do
 
     assert OrderServer.Cost.next_order(orders, 0, :up) ==
              Enum.fetch!(orders, 0)
-  end
-
-  property "bin1 <> bin2 always starts with bin1" do
-    check all bin1 <- binary(),
-              bin2 <- binary() do
-      assert String.starts_with?(bin1 <> bin2, bin1)
-    end
   end
 end

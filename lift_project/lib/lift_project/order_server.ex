@@ -71,7 +71,7 @@ defmodule OrderServer do
   # Callbacks
   def init([]) do
     case Lift.get_state() do
-      {:ok, floor, dir} ->
+      {floor, dir} ->
         state = %{
           active: %{},
           complete: %{},
@@ -82,7 +82,8 @@ defmodule OrderServer do
 
         {:ok, state}
 
-      _other ->
+      other ->
+        IO.inspect(other)
         init([])
     end
   end
