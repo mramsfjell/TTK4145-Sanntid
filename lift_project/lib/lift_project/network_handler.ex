@@ -1,4 +1,7 @@
 defmodule NetworkHandler do
+@moduledoc """
+Module for supervising the listening and broadcasting via UDP.
+"""
   use Supervisor
 
   def start_link([recv_port]) do
@@ -15,6 +18,9 @@ defmodule NetworkHandler do
 end
 
 defmodule UDP.Client do
+  @moduledoc """
+  Module for listening for other nodes via UDP.
+  """
   use Task
   def start_link(port) do
     Task.start_link(__MODULE__,:init,port)
@@ -40,6 +46,9 @@ defmodule UDP.Client do
 end
 
 defmodule UDP.Server do
+  @moduledoc """
+  Module for broadcasting to other nodes via UDP.
+  """
   @sub_net {255,255,255,255}
   @broadcast_intervall 1_000
   use Task
@@ -57,5 +66,26 @@ defmodule UDP.Server do
     :gen_udp.send(socket, @sub_net, recv_port, to_string(Node.self))
     Process.sleep(@broadcast_intervall)
     broadcast(socket,recv_port)
+  end
+
+  @doc """
+
+  RETT FRA KOKEPLATA
+
+  Returns (hopefully) the ip address of your network interface. 
+  ## Examples
+      iex> UDP.Server.get_my_ip
+      {10, 100, 23, 253}
+  """
+
+  def get_my_ip do
+    {:ok, socket} = :gen_udp.open(6789, [active: false, broadcast: true])
+    :ok = :gen_udp.send(socket, {255,255,255,255}, 6789, "test packet")
+    ip = case :gen_udp.recv(socket, 100, 1000) do
+      {:ok, {ip, _port, _data}} -> ip
+      {:error, _} -> {:error, :could_not_get_ip}
+    end
+    :gen_udp.close(socket)
+    ip
   end
 end

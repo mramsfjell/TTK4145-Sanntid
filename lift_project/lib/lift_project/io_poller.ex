@@ -9,7 +9,9 @@ defmodule ButtonPoller.Supervisor do
     Supervisor.start_link(__MODULE__,{:ok,floors},[name: Button.Supervisor])
   end
 
- #
+ @doc """
+ Initializes the supervisor for the button poller.
+ """
   def init({:ok,floors}) do
     children = Enum.flat_map(0..(floors-1), fn floor ->
       cond do
@@ -51,7 +53,10 @@ defmodule ButtonPoller do
     }
   end
 
-  #State transitions
+  @doc """
+  State transitions for the state machine, the button poller. Registrates a single
+  event when a button is pushed.
+  """
 
   def poller(floor,button_type,:released) do
     :timer.sleep(200)
@@ -108,7 +113,10 @@ defmodule FloorPoller do
     }
   end
 
-  #State transitions
+  @doc """
+  State transitions for the state machine, the floor sensor poller. Registrates a single
+  event when a floor sensor is high.
+  """
 
   def poller(:idle) do
     :timer.sleep(200)

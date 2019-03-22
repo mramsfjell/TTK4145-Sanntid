@@ -2,6 +2,12 @@ defmodule OrderServer.Cost do
   @up_dir [:cab, :hall_up]
   @down_dir [:cab, :hall_down]
 
+  @doc """
+  Returns the cost for the lift executing a given order.
+  ##Examples
+      iex>  OrderServer.Cost.calculate_cost(orders, floor, dir, %Order{} = order)
+      int
+  """
   def calculate_cost(orders, floor, dir, %Order{} = order) when is_list(orders) do
     order_count = length(orders)
     path = path_length(orders, {floor, dir}, order)
@@ -9,7 +15,13 @@ defmodule OrderServer.Cost do
   end
 
   @doc """
-  Find the nearest order in the active orders. Returns nil if there are no orders
+  Finds the nearest order in the active orders. Returns nil if there are no orders.
+  ##Examples
+      iex>  OrderServer.Cost.next_order(orders, floor, dir)
+      %{floor: floor, dir: dir}
+
+      iex>  OrderServer.Cost.next_order(orders, floor, dir)
+      nil
   """
   def next_order(orders, floor, dir) when is_list(orders) do
     Enum.min_by(
