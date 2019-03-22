@@ -17,9 +17,6 @@ defmodule OrderDistribution do
 
   @doc """
   Reinjected order from WatchDog.
-  
-  ## Example:
-    iex> OrderDistribution.new_order(floor: :floor,button_type: :type,time: :time,node: :node,watchdog: :watchdog)
   """
   def new_order(order = %Order{}) do
     GenServer.call(@name, {:new_order,order})
@@ -27,9 +24,6 @@ defmodule OrderDistribution do
 
   @doc """
   New order from I/O.
-
-  ## Example:
-    iex> OrderDistribution.new_order(floor: :floorm )
   """
   def new_order(floor, button_type)
     when is_integer(floor) and button_type in @valid_orders

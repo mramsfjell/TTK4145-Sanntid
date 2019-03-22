@@ -21,6 +21,7 @@ defmodule LiftOrder do
   end
 end
 
+
 defmodule Lift do
   @moduledoc """
    Statemachine for controlling the lift given a lift order. Keeps track of one order at a time.
@@ -41,20 +42,23 @@ defmodule Lift do
   # API ------------------------------------------------------
 
   @doc """
-  
+  Lift has reached a floor.
   """
-  Lift has reached a floor
   def at_floor(floor) do
     GenServer.cast(@name,{:at_floor,floor})
   end
 
-  # Creation of a new order
+  @doc """
+  Creation of a new order.
+  """
   def new_order({floor,dir}) do
     order = LiftOrder.new(floor,dir)
     GenServer.cast(@name, {:new_order,order})
   end
 
-  # Get the placement of the lift
+  @doc """
+  Get the placement of the lift.
+  """
   def get_state() do
     GenServer.call(@name,:get_state)
   end
