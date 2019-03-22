@@ -21,11 +21,6 @@ defmodule OrderServer do
     GenServer.cast(@name, {:lift_leaving_floor, floor, dir})
   end
 
-  # Casting that an order has been completed given floor and direction
-  def order_complete(floor, dir) when is_integer(floor) and dir in @valid_dir do
-    GenServer.cast(@name, {:order_complete, floor, dir})
-  end
-
   @doc """
   Casting that an order has been completed given a full order struct
   """
@@ -94,8 +89,8 @@ defmodule OrderServer do
     {:noreply, %{} = new_state}
   end
 
-  def handle_cast({:order_complete, floor, dir}, state) do
-    orders = fetch_orders(state.active, Node.self(), floor, dir)
+  def handle_cast({:order_complete, order}, state) do
+    orders = fetch_orders(state.active, Node.self(), order.floor, order.button_type, state.dir)
 
     new_state =
       state
@@ -119,9 +114,16 @@ defmodule OrderServer do
   end
 
   def handle_call({:evaluate_cost, order}, _from, state) do
-    active_orders = Map.values(state.active)
-    cost = OrderServer.Cost.calculate_cost(active_orders, state.floor, state.dir, order)
-    {:reply, cost, state}
+    reply =
+      if order_in_complete?(state, order) do
+        {:completed, 0}
+      else
+        active_orders = Map.values(state.active)
+        cost = OrderServer.Cost.calculate_cost(active_orders, state.floor, state.dir, order)
+        {:ok, cost}
+      end
+
+    {:reply, reply, state}
   end
 
   def handle_call({:new_order, order}, _from, state) do
@@ -138,7 +140,7 @@ defmodule OrderServer do
     {:reply, {:ok, state}, %{} = state}
   end
 
-  def handle_info({:order_complete, order}, state) do
+  def handle_info({:order_complete_broadcast, order}, state) do
     # IO.inspect(order)
     new_state = remove_order(state, order)
     set_button_light(order, :off)
@@ -161,11 +163,25 @@ defmodule OrderServer do
     new_state = put_in(new_state, [:complete, order.time], order)
   end
 
-  def fetch_orders(orders, node_name, floor, dir) do
+  def order_in_complete?(state, order) do
+    Enum.any?(state.complete, fn {id, _complete_order} -> id == order.time end) |> IO.inspect()
+  end
+
+  def fetch_orders(orders, node_name, floor, button, dir) do
+    order_dir = button_to_dir(button, dir)
+
     orders
     |> Map.values()
     |> Enum.filter(fn order -> order.node == node_name end)
-    |> Enum.filter(fn order -> Order.order_at_floor?(order, floor, dir) end)
+    |> Enum.filter(fn order -> Order.order_at_floor?(order, floor, order_dir) end)
+  end
+
+  def button_to_dir(button, dir) do
+    case button do
+      :hall_up -> :up
+      :hall_down -> :down
+      :cab -> dir
+    end
   end
 
   # Shell functions
@@ -184,7 +200,7 @@ defmodule OrderServer do
   end
 
   def send_complete_order(remote_node, order) do
-    Process.send({:order_server, remote_node}, {:order_complete, order}, [:noconnect])
+    Process.send({:order_server, remote_node}, {:order_complete_broadcast, order}, [:noconnect])
   end
 
   def broadcast_complete_order(orders) when is_list(orders) do
@@ -205,8 +221,8 @@ defmodule OrderServer do
     :ok
   end
 
-  def set_button_light(%Order{button_type: button}, light_state)
+  def set_button_light(%Order{button_type: button, floor: floor}, light_state)
       when button == :hall_up or button == :hall_down do
-    Driver.set_order_button_light(order.floor, order.button_type, light_state)
+    Driver.set_order_button_light(floor, button, light_state)
   end
 end

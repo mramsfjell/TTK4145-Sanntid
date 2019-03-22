@@ -37,21 +37,7 @@ defmodule OrderDistribution do
   end
 
   def handle_call({:new_order, order}, _from, state) do
-    new_order =
-      if order.button_type == :cab do
-        Map.put(order, :node, Node.self())
-      else
-        assign_node(order)
-      end
-
-    new_order
-    |> assign_watchdog(Node.list())
-    # |> timestamp
-    |> broadcast_result
-
-    # |> Format node names(remoove all after @)
-    IO.puts("result")
-    IO.inspect(new_order)
+    execute_auction(order)
     {:reply, :ok, state}
   end
 
@@ -69,14 +55,52 @@ defmodule OrderDistribution do
     Map.put(order, :watch_dog, watch_dog)
   end
 
-  def assign_node(order) do
-    {replies, _bad_nodes} = GenServer.multi_call(:order_server, {:evaluate_cost, order})
-    {node_name, _min_cost} = find_lowest_cost(replies)
-    Map.put(order, :node, node_name) |> IO.inspect()
+  def execute_auction(%{button_type: :cab} = order) do
+    find_lowest_bidder([Node.self()], order)
   end
 
-  def find_lowest_cost(replies) do
-    {node_name, min_cost} = Enum.min_by(replies, fn {node_name, cost} -> cost end)
+  def execute_auction(order) do
+    find_lowest_bidder([Node.self() | Node.list()], order)
+  end
+
+  def find_lowest_bidder(nodes, order) do
+    {bids, _bad_nodes} =
+      GenServer.multi_call(nodes, :order_server, {:evaluate_cost, order}, 1_000)
+
+    IO.inspect(bids)
+
+    case check_valid_bids(bids) do
+      :already_complete ->
+        :ok
+
+      :valid ->
+        {winner_node, _min_cost} = filter_lowest_bidder(bids)
+        post_process_auction(order, winner_node)
+    end
+  end
+
+  def check_valid_bids(bids) do
+    case(Enum.any?(bids, fn {_node, reply} -> {:completed, 0} == reply end)) do
+      true -> :already_complete
+      false -> :valid
+    end
+  end
+
+  def filter_lowest_bidder(bids) do
+    {winner_node, min_bids} =
+      Enum.min_by(bids, fn {node_name, cost} -> cost end, fn -> {Node.self(), 0} end)
+  end
+
+  def post_process_auction(order, winner_node) do
+    new_order =
+      order
+      |> Map.put(:node, winner_node)
+      |> assign_watchdog(Node.list())
+      |> broadcast_result
+
+    IO.puts("result")
+    IO.inspect(new_order)
+    new_order
   end
 
   def broadcast_result(order) do

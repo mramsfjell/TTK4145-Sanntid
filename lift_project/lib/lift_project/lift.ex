@@ -129,7 +129,7 @@ defmodule Lift do
 
   defp door_close_event(%Lift{order: order, floor: floor, dir: dir} = data) do
     Driver.set_door_open_light(:off)
-    OrderServer.order_complete(floor, dir)
+    OrderServer.order_complete(order)
     data = Map.put(data, :order, nil)
     idle_transition(data)
   end
