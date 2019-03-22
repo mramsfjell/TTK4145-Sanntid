@@ -13,16 +13,16 @@ defmodule LiftProject.Application do
       {Lift, []},
       # {FloorSensor,[]},
       {OrderDistribution, []},
-      {OrderServer, []},
       {WatchDog, []},
       {ButtonPoller.Supervisor, [@floors]},
-      {FloorPoller, [:floor]}
-      # {NetworkHandler, [20_000]}
+      {FloorPoller, [:floor]},
+      {NetworkHandler, [22_010]},
+      {OrderServer, []}
       # Starts a worker by calling: LiftProject.Worker.start_link(arg)
       # {LiftProject.Worker, arg}
     ]
 
-    # Node.set_cookie(:HEI)
+    NetworkHandler.boot_node("n")
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options

@@ -80,8 +80,12 @@ defmodule Lift do
     {:noreply, %Lift{} = new_data}
   end
 
+  def handle_call(:get_state, _from, %Lift{state: :init} = data) do
+    {:reply, {:error, :not_ready}, data}
+  end
+
   def handle_call(:get_state, _from, data) do
-    {:reply, {data.floor, data.dir}, data}
+    {:reply, {:ok, data.floor, data.dir}, data}
   end
 
   def handle_info(:close_door, %Lift{state: :door_open} = data) do

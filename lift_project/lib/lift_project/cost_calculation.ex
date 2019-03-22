@@ -23,6 +23,10 @@ defmodule OrderServer.Cost do
       iex>  OrderServer.Cost.next_order(orders, floor, dir)
       nil
   """
+  def next_order(orders, floor, dir) when is_nil(orders) do
+    nil
+  end
+
   def next_order(orders, floor, dir) when is_list(orders) do
     Enum.min_by(
       orders,

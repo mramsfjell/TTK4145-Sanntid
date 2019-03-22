@@ -61,7 +61,7 @@ defmodule OrderServer do
 
   def init([]) do
     case Lift.get_state() do
-      {floor, dir} ->
+      {:ok, floor, dir} ->
         state = %{
           active: %{},
           complete: %{},
@@ -187,7 +187,8 @@ defmodule OrderServer do
   # Shell functions
 
   def assign_new_lift_order(%{floor: floor, dir: dir} = state) do
-    active_orders = Map.values(state.active)
+    active_orders =
+      Map.values(state.active) |> Enum.filter(fn order -> order.node == Node.self() end)
 
     case OrderServer.Cost.next_order(active_orders, floor, dir) do
       nil ->
