@@ -33,6 +33,9 @@ defmodule OrderServer do
     GenServer.start_link(__MODULE__, [], name: @name)
   end
 
+
+  # API -----------------------------------------------------------------------
+  
   # Casts that the lift is leaving a floor
   def leaving_floor(floor, dir) do
     GenServer.cast(@name, {:lift_update, floor, dir})
@@ -68,7 +71,9 @@ defmodule OrderServer do
     GenServer.call(@name, {:get})
   end
 
-  # Callbacks
+
+  # Callbacks --------------------------------------------------
+  
   def init([]) do
     case Lift.get_state() do
       {floor, dir} ->
@@ -152,7 +157,8 @@ defmodule OrderServer do
     {:noreply, %{} = new_state}
   end
 
-  # Helper functions
+
+  # Helper functions ----------------------------------------------------------
 
   def add_order(state, order) do
     put_in(state, [:active, order.time], order)

@@ -1,6 +1,7 @@
 defmodule OrderDistribution do
   @moduledoc """
-  This module takes care of distributing orders, both new orders from I/O and reinjected orders from WatchDog.
+  This module takes care of distributing orders,
+  both new orders from I/O and reinjected orders from WatchDog.
   """
   use GenServer
 
@@ -11,12 +12,25 @@ defmodule OrderDistribution do
     GenServer.start_link(__MODULE__, [], name: @name)
   end
 
-  #Reinjected order from WatchDog
+
+  # API ----------------------------------------------------------
+
+  @doc """
+  Reinjected order from WatchDog.
+  
+  ## Example:
+    iex> OrderDistribution.new_order(floor: :floor,button_type: :type,time: :time,node: :node,watchdog: :watchdog)
+  """
   def new_order(order = %Order{}) do
     GenServer.call(@name, {:new_order,order})
   end
 
-  #New order from I/O
+  @doc """
+  New order from I/O.
+
+  ## Example:
+    iex> OrderDistribution.new_order(floor: :floorm )
+  """
   def new_order(floor, button_type)
     when is_integer(floor) and button_type in @valid_orders
     do
@@ -25,7 +39,7 @@ defmodule OrderDistribution do
   end
 
 
-  # Callbacks
+  # Callbacks ----------------------------------------------------
 
   def init(_args) do
     {:ok,%{}}
@@ -50,7 +64,7 @@ defmodule OrderDistribution do
   end
 
 
-  # Helper functions
+  # Helper functions -----------------------------------------------------
 
   def assign_watchdog(order, [] = node_list) do
       Map.put(order,:watch_dog,Node.self)

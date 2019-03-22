@@ -37,25 +37,31 @@ defmodule Lift do
     GenServer.start_link(__MODULE__,args,[name: @name])
   end
 
-  #Lift has reached a floor
+
+  # API ------------------------------------------------------
+
+  @doc """
+  
+  """
+  Lift has reached a floor
   def at_floor(floor) do
     GenServer.cast(@name,{:at_floor,floor})
   end
 
-  #Creation of a new order
+  # Creation of a new order
   def new_order({floor,dir}) do
     order = LiftOrder.new(floor,dir)
     GenServer.cast(@name, {:new_order,order})
   end
 
-  #Get the placement of the lift
+  # Get the placement of the lift
   def get_state() do
     GenServer.call(@name,:get_state)
   end
 
 
+  # Callbacks --------------------------------------------
 
-  #Callbacks
   def init([]) do
     data =
       case Driver.get_floor_sensor_state() do
@@ -108,7 +114,7 @@ defmodule Lift do
   end
 
 
-  #State transitions
+  # State transitions ------------------------------------------------
 
   defp door_open_transition(%Lift{} = data) do
     Driver.set_motor_direction(:stop)
@@ -144,7 +150,8 @@ defmodule Lift do
       |>Map.put(:state, :idle)
   end
 
-  #Events
+
+  # Events ---------------------------------------------------------------
 
   defp door_close_event(%Lift{order: order} = data) do
     Driver.set_door_open_light(:off)
@@ -189,7 +196,8 @@ defmodule Lift do
     |> at_floor_event()
   end
 
-  #Helper functions
+
+  # Helper functions ---------------------------------------------
 
   defp order_at_floor?(%LiftOrder{} = order,floor,dir) do
     order.floor == floor and order.dir == dir
