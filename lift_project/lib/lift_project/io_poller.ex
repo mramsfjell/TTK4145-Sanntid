@@ -1,32 +1,40 @@
-
 defmodule ButtonPoller.Supervisor do
   @moduledoc """
   Supervisor for the button poller.
   """
   use Supervisor
 
-  def start_link ([floors]) do
-    Supervisor.start_link(__MODULE__,{:ok,floors},[name: Button.Supervisor])
+  def start_link([floors]) do
+    Supervisor.start_link(__MODULE__, {:ok, floors}, name: Button.Supervisor)
   end
 
- @doc """
- Initializes the supervisor for the button poller.
- """
-  def init({:ok,floors}) do
-    children = Enum.flat_map(0..(floors-1), fn floor ->
-      cond do
-        floor == 0 ->
-            [ButtonPoller.child_spec(["u"<>to_string(floor),floor,:hall_up]),
-             ButtonPoller.child_spec(["c"<>to_string(floor),floor,:cab])]
-        floor == (floors-1) ->
-            [ButtonPoller.child_spec(["d"<>to_string(floor),floor,:hall_down]),
-             ButtonPoller.child_spec(["c"<>to_string(floor),floor,:cab])]
-        (0 < floor) and (floor < (floors-1)) ->
-            [ButtonPoller.child_spec(["u"<>to_string(floor),floor,:hall_up]),
-             ButtonPoller.child_spec(["d"<>to_string(floor),floor,:hall_down]),
-             ButtonPoller.child_spec(["c"<>to_string(floor),floor,:cab])]
-      end
-    end)
+  @doc """
+  Initializes the supervisor for the button poller.
+  """
+  def init({:ok, floors}) do
+    children =
+      Enum.flat_map(0..(floors - 1), fn floor ->
+        cond do
+          floor == 0 ->
+            [
+              ButtonPoller.child_spec(["u" <> to_string(floor), floor, :hall_up]),
+              ButtonPoller.child_spec(["c" <> to_string(floor), floor, :cab])
+            ]
+
+          floor == floors - 1 ->
+            [
+              ButtonPoller.child_spec(["d" <> to_string(floor), floor, :hall_down]),
+              ButtonPoller.child_spec(["c" <> to_string(floor), floor, :cab])
+            ]
+
+          0 < floor and floor < floors - 1 ->
+            [
+              ButtonPoller.child_spec(["u" <> to_string(floor), floor, :hall_up]),
+              ButtonPoller.child_spec(["d" <> to_string(floor), floor, :hall_down]),
+              ButtonPoller.child_spec(["c" <> to_string(floor), floor, :cab])
+            ]
+        end
+      end)
 
     opts = [strategy: :one_for_one, name: Button.Supervisor]
     Supervisor.init(children, opts)
@@ -41,16 +49,12 @@ defmodule ButtonPoller do
   """
   use Task
 
-  def start_link([floor,button_type]) do
-    Task.start_link(__MODULE__, :poller,[floor, button_type, :released])
+  def start_link([floor, button_type]) do
+    Task.start_link(__MODULE__, :poller, [floor, button_type, :released])
   end
 
-  def child_spec([id|button_info]) do
-    %{id: id,
-      start: {__MODULE__,:start_link,[button_info]},
-      restart: :permanent,
-      type: :worker
-    }
+  def child_spec([id | button_info]) do
+    %{id: id, start: {__MODULE__, :start_link, [button_info]}, restart: :permanent, type: :worker}
   end
 
   @doc """
@@ -58,36 +62,41 @@ defmodule ButtonPoller do
   event when a button is pushed.
   """
 
-  def poller(floor,button_type,:released) do
+  def poller(floor, button_type, :released) do
     :timer.sleep(200)
-    case Driver.get_order_button_state(floor,button_type) do
+
+    case Driver.get_order_button_state(floor, button_type) do
       0 ->
-        poller(floor,button_type,:released)
-      1->
-        poller(floor,button_type,:rising_edge)
-      {:error,:timeout} ->
-        poller(floor,button_type,:released)
+        poller(floor, button_type, :released)
+
+      1 ->
+        poller(floor, button_type, :rising_edge)
+
+      {:error, :timeout} ->
+        poller(floor, button_type, :released)
     end
   end
 
-  def poller(floor,button_type,:rising_edge) do
-    #IO.puts("Tester")
-    OrderDistribution.new_order(floor,button_type)
-    poller(floor,button_type,:pushed)
+  def poller(floor, button_type, :rising_edge) do
+    # IO.puts("Tester")
+    OrderDistribution.new_order(floor, button_type)
+    poller(floor, button_type, :pushed)
   end
 
-  def poller(floor,button_type,:pushed) do
+  def poller(floor, button_type, :pushed) do
     :timer.sleep(200)
-    #testvar = Driver.get_order_button_state(floor,button_type)
-    #IO.inspect(testvar)
-    case Driver.get_order_button_state(floor,button_type) do
+    # testvar = Driver.get_order_button_state(floor,button_type)
+    # IO.inspect(testvar)
+    case Driver.get_order_button_state(floor, button_type) do
       0 ->
-        poller(floor,button_type,:released)
-      1->
-        #IO.puts("PUSHED")
-        poller(floor,button_type,:pushed)
-      {:error,:timeout} ->
-        poller(floor,button_type,:released)
+        poller(floor, button_type, :released)
+
+      1 ->
+        # IO.puts("PUSHED")
+        poller(floor, button_type, :pushed)
+
+      {:error, :timeout} ->
+        poller(floor, button_type, :released)
     end
   end
 end
@@ -106,11 +115,7 @@ defmodule FloorPoller do
   end
 
   def child_spec([id]) do
-    %{id: id,
-      start: {__MODULE__,:start_link,[]},
-      restart: :permanent,
-      type: :worker
-    }
+    %{id: id, start: {__MODULE__, :start_link, []}, restart: :permanent, type: :worker}
   end
 
   @doc """
@@ -120,10 +125,12 @@ defmodule FloorPoller do
 
   def poller(:idle) do
     :timer.sleep(200)
+
     case Driver.get_floor_sensor_state() do
       :between_floors ->
         poller(:between_floors)
-      _other->
+
+      _other ->
         poller(:idle)
     end
   end

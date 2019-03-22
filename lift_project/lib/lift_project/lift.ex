@@ -1,25 +1,3 @@
-defmodule LiftOrder do
-  @moduledoc """
-  Defining the data structure for, and creation of a lift order. A lift order is a simpler
-  version of the full order, as this module only cares about running the lift in the right direction.
-  """
-  defstruct [:floor, :dir]
-  @valid_dir [:up, :down]
-  @enforce_keys [:floor, :dir]
-
-  def new({floor, dir})
-      when is_integer(floor) and dir in @valid_dir do
-    %LiftOrder{
-      floor: floor,
-      dir: dir
-    }
-  end
-
-  def new(floor, dir) do
-    new({floor, dir})
-  end
-end
-
 defmodule Lift do
   @moduledoc """
   Statemachine for controlling the lift given a lift order. Keeps track of one order at a time.
@@ -27,7 +5,7 @@ defmodule Lift do
   use GenServer
 
   @name :Lift_FSM
-  @door_timer 5_000
+  @door_timer 4_000
   @enforce_keys [:floor, :dir, :order, :state]
   defstruct [:floor, :dir, :order, :state]
 
@@ -38,14 +16,14 @@ defmodule Lift do
   # API ------------------------------------------------------
 
   @doc """
-  Lift has reached a floor.
+  Message the state machine that the lift has reached a floor.
   """
   def at_floor(floor) do
     GenServer.cast(@name, {:at_floor, floor})
   end
 
   @doc """
-  Creation of a new order.
+  Assign new order to the lift.
   """
   def new_order(%Order{} = order) do
     GenServer.cast(@name, {:new_order, order})
@@ -106,7 +84,7 @@ defmodule Lift do
     {:reply, {data.floor, data.dir}, data}
   end
 
-  def handle_info(:close_door, data = %Lift{state: :door_open}) do
+  def handle_info(:close_door, %Lift{state: :door_open} = data) do
     new_data = door_close_event(data)
     {:noreply, %Lift{} = new_data}
   end
@@ -149,9 +127,9 @@ defmodule Lift do
 
   # Events ---------------------------------------------------------------
 
-  defp door_close_event(%Lift{order: order} = data) do
+  defp door_close_event(%Lift{order: order, floor: floor, dir: dir} = data) do
     Driver.set_door_open_light(:off)
-    OrderServer.order_complete(data.order.floor, data.order.dir)
+    OrderServer.order_complete(floor, dir)
     data = Map.put(data, :order, nil)
     idle_transition(data)
   end
@@ -176,10 +154,9 @@ defmodule Lift do
   defp at_floor_event(%Lift{floor: floor, order: order} = data) do
     IO.puts("at floor#{floor}")
 
-    if Order.order_at_floor?(order, floor) do
-      door_open_transition(data)
-    else
-      mooving_transition(data)
+    case Order.order_at_floor?(order, floor) do
+      true -> door_open_transition(data)
+      false -> mooving_transition(data)
     end
   end
 

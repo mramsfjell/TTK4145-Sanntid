@@ -26,4 +26,8 @@ defmodule Order do
   def order_at_floor?(%Order{} = order, floor, :down) do
     order.floor == floor and order.button_type in @down_dir
   end
+
+  def order_at_floor?(%Order{} = order, floor) do
+    order.floor == floor
+  end
 end

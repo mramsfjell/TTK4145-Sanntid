@@ -2,14 +2,13 @@ defmodule OrderServer do
   @moduledoc """
   This module keeps track of orders collected from OrderDistribution in addition to setting hall lights and path logic.
   """
-
   use GenServer
 
   @valid_dir [:up, :down]
   @up_dir [:cab, :hall_up]
   @down_dir [:cab, :hall_down]
   @name :order_server
-  # @direction_map %{up: 1, down: -1}
+  @direction_map %{up: 1, down: -1}
 
   def start_link([]) do
     GenServer.start_link(__MODULE__, [], name: @name)
@@ -78,17 +77,16 @@ defmodule OrderServer do
 
         {:ok, state}
 
-      other ->
-        IO.inspect(other)
+      _other ->
+        Process.sleep(100)
         init([])
     end
   end
 
   def handle_cast({:lift_leaving_floor, floor, dir}, state) do
-    # @direction_map[dir]
-    next_floor =
-      floor +
-        new_state =
+    next_floor = floor + @direction_map[dir]
+
+    new_state =
       state
       |> Map.put(:floor, next_floor)
       |> Map.put(:dir, dir)
@@ -132,7 +130,6 @@ defmodule OrderServer do
       |> add_order(order)
       |> assign_new_lift_order
 
-    # Only set cab-light in own cab
     set_button_light(order, :on)
     {:reply, order, %{} = new_state}
   end
@@ -181,14 +178,12 @@ defmodule OrderServer do
         Map.put(state, :last_order, nil)
 
       order ->
-        next_order = order_to_dir(state, order)
-        Lift.new_order(next_order)
-        Map.put(state, :last_order, next_order)
+        Lift.new_order(order)
+        Map.put(state, :last_order, order)
     end
   end
 
   def send_complete_order(remote_node, order) do
-    # NOTE something to check that the message were sent?
     Process.send({:order_server, remote_node}, {:order_complete, order}, [:noconnect])
   end
 
@@ -202,7 +197,7 @@ defmodule OrderServer do
     end)
   end
 
-  def set_button_light(%{button_type: :cab} = order, light_state) do
+  def set_button_light(%Order{button_type: :cab} = order, light_state) do
     if order.node == Node.self() do
       Driver.set_order_button_light(order.floor, order.button_type, light_state)
     end
@@ -210,19 +205,8 @@ defmodule OrderServer do
     :ok
   end
 
-  def set_button_light(order, light_state) do
+  def set_button_light(%Order{button_type: button}, light_state)
+      when button == :hall_up or button == :hall_down do
     Driver.set_order_button_light(order.floor, order.button_type, light_state)
-  end
-
-  # TODO remove when lift is refactored to uese order map
-  def order_to_dir(%{dir: last_dir}, %Order{button_type: button, floor: floor}) do
-    dir =
-      case button do
-        :hall_up -> :up
-        :hall_down -> :down
-        :cab -> last_dir
-      end
-
-    {floor, dir}
   end
 end
