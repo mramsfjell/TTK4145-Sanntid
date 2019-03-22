@@ -22,7 +22,7 @@ defmodule LiftProject.Application do
       # {LiftProject.Worker, arg}
     ]
 
-    NetworkHandler.boot_node("n")
+    NetworkHandler.boot_node("n", 1_000)
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options

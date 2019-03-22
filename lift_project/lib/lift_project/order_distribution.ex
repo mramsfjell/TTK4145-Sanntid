@@ -56,6 +56,7 @@ defmodule OrderDistribution do
   end
 
   def execute_auction(%{button_type: :cab} = order) do
+    IO.puts("Cab auction")
     IO.inspect(order)
     find_lowest_bidder([order.node], order)
   end

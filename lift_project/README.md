@@ -19,3 +19,5 @@ Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_do
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
 be found at [https://hexdocs.pm/lift_project](https://hexdocs.pm/lift_project).
 
+Assumptions
+We assume that a person ordering the lift down will push a cab call below afterwards for optimal performance from the system

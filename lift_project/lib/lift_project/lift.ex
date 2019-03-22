@@ -5,7 +5,7 @@ defmodule Lift do
   use GenServer
 
   @name :Lift_FSM
-  @door_timer 4_000
+  @door_timer 2_000
   @enforce_keys [:floor, :dir, :order, :state]
   defstruct [:floor, :dir, :order, :state]
 
