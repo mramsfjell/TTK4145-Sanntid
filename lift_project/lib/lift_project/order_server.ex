@@ -1,22 +1,3 @@
-defmodule Order do
-  @moduledoc """
-  Defining the data structure for, and creation of a order. The timestamp is used as an order ID.
-  """
-  @valid_order [:hall_down, :cab, :hall_up]
-  @enforce_keys [:floor, :button_type]
-  defstruct [:floor, :button_type, :time, node: nil, watch_dog: nil]
-
-  def new(floor, button_type)
-      when is_integer(floor) and button_type in @valid_order do
-    %Order{
-      floor: floor,
-      button_type: button_type,
-      time: Time.utc_now(),
-      node: Node.self()
-    }
-  end
-end
-
 defmodule OrderServer do
   @moduledoc """
   This module keeps track of orders collected from OrderDistribution in addition to setting hall lights and path logic.
@@ -28,17 +9,17 @@ defmodule OrderServer do
   @up_dir [:cab, :hall_up]
   @down_dir [:cab, :hall_down]
   @name :order_server
+  # @direction_map %{up: 1, down: -1}
 
   def start_link([]) do
     GenServer.start_link(__MODULE__, [], name: @name)
   end
 
-
   # API -----------------------------------------------------------------------
-  
+
   # Casts that the lift is leaving a floor
   def leaving_floor(floor, dir) do
-    GenServer.cast(@name, {:lift_update, floor, dir})
+    GenServer.cast(@name, {:lift_leaving_floor, floor, dir})
   end
 
   # Casting that an order has been completed given floor and direction
@@ -46,34 +27,44 @@ defmodule OrderServer do
     GenServer.cast(@name, {:order_complete, floor, dir})
   end
 
-  # Casting that an order has been completed given a full order struct
+  @doc """
+  Casting that an order has been completed given a full order struct
+  """
   def order_complete(%Order{} = order) do
     GenServer.cast(@name, {:order_complete, order})
   end
 
-  # Casting that a lift is ready for a new order
+  @doc """
+  Casting that a lift is ready for a new order
+  """
   def lift_ready() do
     GenServer.cast(@name, {:lift_ready})
   end
 
-  # Calling for the cost of a lift potentially executing a order
+  @doc """
+  Calling for the cost of a lift potentially executing a order
+  """
+
   def evaluate_cost(order) do
     GenServer.call(@name, {:evaluate_cost, order})
   end
 
-  # Create new order
+  @doc """
+  Create new order
+  """
   def new_order(order) do
     GenServer.call(@name, {:new_order, order})
   end
 
-  # Get current orders
+  @doc """
+  Get current orders, for debugging purposes
+  """
   def get_orders() do
     GenServer.call(@name, {:get})
   end
 
-
   # Callbacks --------------------------------------------------
-  
+
   def init([]) do
     case Lift.get_state() do
       {floor, dir} ->
@@ -93,10 +84,11 @@ defmodule OrderServer do
     end
   end
 
-  def handle_cast({:lift_update, floor, dir}, state) do
-    next_floor = floor + dir_to_int(dir)
-
-    new_state =
+  def handle_cast({:lift_leaving_floor, floor, dir}, state) do
+    # @direction_map[dir]
+    next_floor =
+      floor +
+        new_state =
       state
       |> Map.put(:floor, next_floor)
       |> Map.put(:dir, dir)
@@ -157,8 +149,7 @@ defmodule OrderServer do
     {:noreply, %{} = new_state}
   end
 
-
-  # Helper functions ----------------------------------------------------------
+  # Order data functions--------------------------------------------------------
 
   def add_order(state, order) do
     put_in(state, [:active, order.time], order)
@@ -173,20 +164,14 @@ defmodule OrderServer do
     new_state = put_in(new_state, [:complete, order.time], order)
   end
 
-  def order_at_floor?(order, floor, :up) do
-    order.floor == floor and order.button_type in @up_dir
-  end
-
-  def order_at_floor?(%Order{} = order, floor, :down) do
-    order.floor == floor and order.button_type in @down_dir
-  end
-
   def fetch_orders(orders, node_name, floor, dir) do
     orders
     |> Map.values()
     |> Enum.filter(fn order -> order.node == node_name end)
-    |> Enum.filter(fn order -> order_at_floor?(order, floor, dir) end)
+    |> Enum.filter(fn order -> Order.order_at_floor?(order, floor, dir) end)
   end
+
+  # Shell functions
 
   def assign_new_lift_order(%{floor: floor, dir: dir} = state) do
     active_orders = Map.values(state.active)
@@ -217,18 +202,19 @@ defmodule OrderServer do
     end)
   end
 
-  def set_button_light(%{button_type: :cab} = order, ligth_state) do
+  def set_button_light(%{button_type: :cab} = order, light_state) do
     if order.node == Node.self() do
-      Driver.set_order_button_light(order.floor, order.button_type, ligth_state)
+      Driver.set_order_button_light(order.floor, order.button_type, light_state)
     end
 
     :ok
   end
 
-  def set_button_light(order, ligth_state) do
-    Driver.set_order_button_light(order.floor, order.button_type, ligth_state)
+  def set_button_light(order, light_state) do
+    Driver.set_order_button_light(order.floor, order.button_type, light_state)
   end
 
+  # TODO remove when lift is refactored to uese order map
   def order_to_dir(%{dir: last_dir}, %Order{button_type: button, floor: floor}) do
     dir =
       case button do
@@ -239,7 +225,4 @@ defmodule OrderServer do
 
     {floor, dir}
   end
-
-  def dir_to_int(:up), do: 1
-  def dir_to_int(:down), do: -1
 end
