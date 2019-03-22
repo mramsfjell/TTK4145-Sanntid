@@ -56,7 +56,8 @@ defmodule OrderDistribution do
   end
 
   def execute_auction(%{button_type: :cab} = order) do
-    find_lowest_bidder([Node.self()], order)
+    IO.inspect(order)
+    find_lowest_bidder([order.node], order)
   end
 
   def execute_auction(order) do
@@ -92,15 +93,13 @@ defmodule OrderDistribution do
   end
 
   def post_process_auction(order, winner_node) do
-    new_order =
-      order
-      |> Map.put(:node, winner_node)
-      |> assign_watchdog(Node.list())
-      |> broadcast_result
-
     IO.puts("result")
-    IO.inspect(new_order)
-    new_order
+
+    order
+    |> Map.put(:node, winner_node)
+    |> assign_watchdog(Node.list())
+    |> IO.inspect()
+    |> broadcast_result
   end
 
   def broadcast_result(order) do
