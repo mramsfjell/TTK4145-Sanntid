@@ -81,14 +81,20 @@ defmodule UDP.Server do
       {10, 100, 23, 253}
   """
 
-  def get_my_ip do
+  def get_my_ip(counter = 0) when counter < 11 do
+    Process.sleep(100)
+
+    if counter == 10 do
+      IO.puts("Couldn't find my IP")
+    end
+
     {:ok, socket} = :gen_udp.open(6789, active: false, broadcast: true)
-    :ok = :gen_udp.send(socket, {255, 255, 255, 255}, 6789, "test packet")
+    :ok = :gen_udp.send(socket, {255, 255, 255, 255}, 6789, "Test packet")
 
     ip =
       case :gen_udp.recv(socket, 100, 1000) do
         {:ok, {ip, _port, _data}} -> ip
-        {:error, _} -> {:error, :could_not_get_ip}
+        {:error, _} -> get_my_ip(counter + 1)
       end
 
     :gen_udp.close(socket)
