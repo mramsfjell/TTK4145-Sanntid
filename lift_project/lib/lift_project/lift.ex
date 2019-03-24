@@ -42,6 +42,8 @@ defmodule Lift do
   # Callbacks --------------------------------------------
   def init([]) do
     Driver.set_door_open_light(:off)
+    Driver.set_motor_direction(:stop)
+    Process.sleep(500)
 
     data =
       case Driver.get_floor_sensor_state() do
@@ -159,7 +161,19 @@ defmodule Lift do
     end
   end
 
-  defp new_order_event(%Lift{} = data, %Order{} = order) do
+  defp new_order_event(
+         %Lift{floor: current_floor, dir: :up} = data,
+         %Order{floor: target_floor} = order
+       )
+       when current_floor <= target_floor do
+    add_order(data, order)
+  end
+
+  defp new_order_event(
+         %Lift{floor: current_floor, dir: :down} = data,
+         %Order{floor: target_floor} = order
+       )
+       when current_floor >= target_floor do
     add_order(data, order)
   end
 
