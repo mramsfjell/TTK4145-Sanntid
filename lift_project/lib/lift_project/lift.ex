@@ -42,6 +42,7 @@ defmodule Lift do
   # Callbacks --------------------------------------------
   def init([]) do
     Driver.set_door_open_light(:off)
+
     data =
       case Driver.get_floor_sensor_state() do
         :between_floors ->
@@ -64,6 +65,10 @@ defmodule Lift do
       end
 
     {:ok, data}
+  end
+
+  def terminate(_reason, state) do
+    Driver.set_motor_direction(:stop)
   end
 
   def handle_cast({:at_floor, floor}, data) do

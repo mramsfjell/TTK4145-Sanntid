@@ -1,12 +1,14 @@
 defmodule OrderServer.Cost do
+  require Order
+
   @up_dir [:cab, :hall_up]
   @down_dir [:cab, :hall_down]
 
   @doc """
   Returns the cost for the lift executing a given order.
   ##Examples
-      iex>  OrderServer.Cost.calculate_cost(orders, floor, dir, %Order{} = order)
-      int
+      iex>  OrderServer.Cost.calculate_cost([Order.new(1,:cab)], 2, :up, Order.new(2,:cab))
+      
   """
   def calculate_cost(orders, floor, dir, %Order{} = order) when is_list(orders) do
     order_count = length(orders)
