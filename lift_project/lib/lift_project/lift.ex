@@ -40,8 +40,8 @@ defmodule Lift do
   end
 
   # Callbacks --------------------------------------------
-
   def init([]) do
+    Driver.set_door_open_light(:off)
     data =
       case Driver.get_floor_sensor_state() do
         :between_floors ->
