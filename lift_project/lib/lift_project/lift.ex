@@ -24,6 +24,9 @@ defmodule Lift do
 
   @doc """
   Assign new order to the lift.
+
+  ## Examples
+    iex> Lift.new_order()
   """
   def new_order(%Order{} = order) do
     GenServer.cast(@name, {:new_order, order})

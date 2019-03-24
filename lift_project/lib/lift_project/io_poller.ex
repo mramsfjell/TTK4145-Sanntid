@@ -10,6 +10,7 @@ defmodule ButtonPoller.Supervisor do
 
   @doc """
   Initializes the supervisor for the button poller.
+  @spec init(:ok, floors :: integer) :: {:ok, tuple()}
   """
   def init({:ok, floors}) do
     children =
@@ -44,8 +45,7 @@ end
 defmodule ButtonPoller do
   @moduledoc """
   Registrates a single event when a button event is beeing triggered in a
-  sequence, eg. the floor sensor is high when a floor is reached and the lift stays
-  at the floor.
+  sequence.
   """
   use Task
 
@@ -58,8 +58,9 @@ defmodule ButtonPoller do
   end
 
   @doc """
-  State transitions for the state machine, the button poller. Registrates a single
-  event when a button is pushed.
+  State transitions for the state machine, the button poller.
+  Registrates if a given button is not being pushed, transitioning from
+  low to high or high to low, or being held continuously.
   """
 
   def poller(floor, button_type, :released) do
@@ -119,8 +120,9 @@ defmodule FloorPoller do
   end
 
   @doc """
-  State transitions for the state machine, the floor sensor poller. Registrates a single
-  event when a floor sensor is high.
+  State transitions for the state machine, the floor sensor poller.
+  Registrates if a given floor sensor is high, or if the lift is currently
+  between floors.
   """
 
   def poller(:idle) do
