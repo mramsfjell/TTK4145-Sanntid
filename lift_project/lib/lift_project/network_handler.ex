@@ -16,20 +16,36 @@ defmodule NetworkHandler do
 
     Supervisor.init(children, strategy: :one_for_one)
   end
+end
 
-  @doc """
-
-  RETT FRA KOKEPLATA
-
-  Returns (hopefully) the ip address of your network interface.
-  ## Examples
-      iex> UDP.Server.get_my_ip
-      {10, 100, 23, 253}
+defmodule NetworkInitialization do
+  @moduledoc """
+  Initializes the node by fetching IP and setting name, cookie and tick_time.
   """
 
+  @doc """
+  Boots a node with a specified tick time. node_name sets the node name before @.
+  The IP-address is automatically imported.
+      iex> NetworkInitialization.boot_node "n1"
+      {:ok, #PID<0.12.2>}
+      iex(n1@10.100.23.253)> _
+  """
+  def boot_node(node_name, tick_time \\ 15_000) do
+    ip = get_my_ip() |> ip_to_string()
+    full_name = node_name <> "@" <> ip
+    Node.start(String.to_atom(full_name), :longnames, tick_time)
+    Node.set_cookie(:Daarlig_luft)
+  end
+
+
+  @doc """
+  Returns the ip address of our network interface.
+  ## Examples
+      iex> NetworkInitialization.get_my_ip
+      {10, 100, 23, 253}
+  """
   def get_my_ip(counter \\ 0) when counter < 11 do
     Process.sleep(100)
-
     if counter == 10 do
       IO.puts("Couldn't find my IP")
     end
@@ -49,21 +65,6 @@ defmodule NetworkHandler do
 
   def ip_to_string(ip) do
     :inet.ntoa(ip) |> to_string()
-  end
-
-  @doc """
-  boots a node with a specified tick time. node_name sets the node name before @. The IP-address is
-  automatically imported
-      iex> NetworkStuff.boot_node "frank"
-      {:ok, #PID<0.12.2>}
-      iex(frank@10.100.23.253)> _
-  """
-
-  def boot_node(node_name, tick_time \\ 15_000) do
-    ip = get_my_ip() |> ip_to_string()
-    full_name = node_name <> "@" <> ip
-    Node.start(String.to_atom(full_name), :longnames, tick_time)
-    Node.set_cookie(:Daarlig_luft)
   end
 end
 
