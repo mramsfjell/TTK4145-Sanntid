@@ -1,6 +1,8 @@
 defmodule OrderServer do
   @moduledoc """
-  This module keeps track of orders collected from OrderDistribution in addition to setting hall lights and path logic.
+  This module keeps track of orders collected from OrderDistribution,
+  in addition to setting hall lights and calculating the cost of a
+  given order for the respective lift.
   """
   use GenServer
 
@@ -16,20 +18,24 @@ defmodule OrderServer do
 
   # API -----------------------------------------------------------------------
 
-  # Casts that the lift is leaving a floor
+  @doc """
+  Casts that the lift is leaving a floor. The next floor is calculated,
+  given the direction, and is set as the new state.
+  """ 
   def leaving_floor(floor, dir) do
     GenServer.cast(@name, {:lift_leaving_floor, floor, dir})
   end
 
   @doc """
-  Casting that an order has been completed given a full order struct
+  Casting that an order has been completed, given a full order struct
+  as defined in the Order module.
   """
   def order_complete(%Order{} = order) do
     GenServer.cast(@name, {:order_complete, order})
   end
 
   @doc """
-  Casting that a lift is ready for a new order
+  Casting that a lift is ready for a new order.
   """
   def lift_ready() do
     GenServer.cast(@name, {:lift_ready})
@@ -150,19 +156,29 @@ defmodule OrderServer do
 
   # Order data functions--------------------------------------------------------
 
+  @doc """
+  Add the given order to the :active Map.
+  """
   def add_order(state, order) do
     put_in(state, [:active, order.id], order)
   end
 
+  @doc """
+  
+  """
   def remove_order(state, orders) when is_list(orders) do
     Enum.reduce(orders, state, fn order, int_state -> remove_order(int_state, order) end)
   end
 
+  @doc """
+  
+  """
   def remove_order(state, %Order{time: time} = order) do
     {_complete_order, new_state} = pop_in(state, [:active, time])
     new_state = put_in(new_state, [:complete, order.id], order)
   end
 
+  
   def order_in_complete?(state, order) do
     Enum.any?(state.complete, fn {id, _complete_order} -> id == order.id end) |> IO.inspect()
   end
@@ -184,7 +200,7 @@ defmodule OrderServer do
     end
   end
 
-  # Shell functions
+  # Shell functions --------------------------------------------------------
 
   def assign_new_lift_order(%{floor: floor, dir: dir} = state) do
     active_orders =
