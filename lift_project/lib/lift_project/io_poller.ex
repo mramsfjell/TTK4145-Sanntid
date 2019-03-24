@@ -9,43 +9,85 @@ defmodule ButtonPoller.Supervisor do
   end
 
   @doc """
-  Initializes the supervisor for the button poller.
+  Initializes the supervisor for the button poller. Turns off all button lights.
+  @spec init(:ok, floors :: integer) :: {:ok, tuple()}
   """
   def init({:ok, floors}) do
+    available_order_buttons = get_all_button_types(floors)
+    Enum.each(available_order_buttons, fn {floor,button_type} -> Driver.set_order_button_light(floor, button_type, :off) end)
     children =
-      Enum.flat_map(0..(floors - 1), fn floor ->
-        cond do
-          floor == 0 ->
-            [
-              ButtonPoller.child_spec(["u" <> to_string(floor), floor, :hall_up]),
-              ButtonPoller.child_spec(["c" <> to_string(floor), floor, :cab])
-            ]
-
-          floor == floors - 1 ->
-            [
-              ButtonPoller.child_spec(["d" <> to_string(floor), floor, :hall_down]),
-              ButtonPoller.child_spec(["c" <> to_string(floor), floor, :cab])
-            ]
-
-          0 < floor and floor < floors - 1 ->
-            [
-              ButtonPoller.child_spec(["u" <> to_string(floor), floor, :hall_up]),
-              ButtonPoller.child_spec(["d" <> to_string(floor), floor, :hall_down]),
-              ButtonPoller.child_spec(["c" <> to_string(floor), floor, :cab])
-            ]
-        end
-      end)
+      Enum.each(available_order_buttons, fn {floor, button_type} -> ButtonPoller.child_spec(floor, button_type)) end)
+    end
 
     opts = [strategy: :one_for_one, name: Button.Supervisor]
     Supervisor.init(children, opts)
   end
+
+
+  @doc """
+  Credited: Jostein Løwer. https://github.com/jostlowe/kokeplata/tree/master/lib (24.03.19)
+  Returns all the different types of buttons on the elevator panel.
+  ## Examples
+      iex> ButtonPoller.Supervisor.get_all_button_types
+      [:hall_up, :hall_down, :cab]
+  """
+
+  def get_all_button_types do
+    [:hall_up, :hall_down, :cab]
+  end
+
+  @doc """
+  Credited: Jostein Løwer. https://github.com/jostlowe/kokeplata/tree/master/lib (24.03.19)
+  Returns all possible orders of a single button type, given the number of the top floor
+  Returns a list of tuples on the from {button_type, floor}
+  ## Examples
+      iex> ButtonPoller.Supervisor.get_all_button_types(:hall_up, 3)
+      [
+      %ElevatorOrder{floor: 0, type: :hall_up},
+      %ElevatorOrder{floor: 1, type: :hall_up},
+      %ElevatorOrder{floor: 2, type: :hall_up},
+      ]
+  """
+
+  def get_buttons_of_type(button_type, top_floor) do
+    floor_list = case button_type do
+      :hall_up -> 0..top_floor-1
+      :hall_down -> 1..top_floor
+      :cab -> 0..top_floor
+    end
+    floor_list |> Enum.map(fn floor -> %ElevatorOrder{floor: floor, type: button_type} end)
+  end
+
+  @doc """
+  Credited: Jostein Løwer. https://github.com/jostlowe/kokeplata/tree/master/lib (24.03.19)
+  Returns all possible orders on a single elevator.
+  Returns a list of tuples on the from {button_type, floor}
+  ## Examples
+      iex> ButtonPoller.Supervisor.get_all_buttons(3)
+      [
+      %ElevatorOrder{floor: 0, type: :hall_up},
+      %ElevatorOrder{floor: 1, type: :hall_up},
+      %ElevatorOrder{floor: 2, type: :hall_up},
+      %ElevatorOrder{floor: 1, type: :hall_down},
+      %ElevatorOrder{floor: 2, type: :hall_down},
+      %ElevatorOrder{floor: 3, type: :hall_down},
+      %ElevatorOrder{floor: 0, type: :cab},
+      %ElevatorOrder{floor: 1, type: :cab},
+      %ElevatorOrder{floor: 2, type: :cab},
+      %ElevatorOrder{floor: 3, type: :cab},
+      ]
+  """
+
+  def get_all_buttons(top_floor) do
+    get_all_button_types() |> Enum.map(fn button_type -> get_buttons_of_type(button_type, top_floor) end) |> List.flatten
+  end
+
 end
 
 defmodule ButtonPoller do
   @moduledoc """
   Registrates a single event when a button event is beeing triggered in a
-  sequence, eg. the floor sensor is high when a floor is reached and the lift stays
-  at the floor.
+  sequence.
   """
   use Task
 
@@ -53,13 +95,15 @@ defmodule ButtonPoller do
     Task.start_link(__MODULE__, :poller, [floor, button_type, :released])
   end
 
-  def child_spec([id | button_info]) do
-    %{id: id, start: {__MODULE__, :start_link, [button_info]}, restart: :permanent, type: :worker}
+  def child_spec(floor, button_type) do
+    %{id: to_string(floor) <> to_string(button_type), start: {__MODULE__, :start_link, [button_info]}, restart: :permanent, type: :worker}
   end
 
   @doc """
-  State transitions for the state machine, the button poller. Registrates a single
-  event when a button is pushed.
+  Poller logic influenced by Jostein Løwer.
+  State transitions for the state machine, the button poller.
+  Registrates if a given button is not being pushed, transitioning from
+  low to high or high to low, or being held continuously.
   """
 
   def poller(floor, button_type, :released) do
@@ -119,8 +163,10 @@ defmodule FloorPoller do
   end
 
   @doc """
-  State transitions for the state machine, the floor sensor poller. Registrates a single
-  event when a floor sensor is high.
+  Poller logic influenced by Jostein Løwer.
+  State transitions for the state machine, the floor sensor poller.
+  Registrates if a given floor sensor is high, or if the lift is currently
+  between floors.
   """
 
   def poller(:idle) do
