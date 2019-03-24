@@ -14,14 +14,19 @@ defmodule ButtonPoller.Supervisor do
   """
   def init({:ok, floors}) do
     available_order_buttons = get_all_buttons(floors)
-    Enum.each(available_order_buttons, fn {floor,button_type} -> Driver.set_order_button_light(floor, button_type, :off) end)
+
+    Enum.each(available_order_buttons, fn button ->
+      Driver.set_order_button_light(button.floor, button.type, :off)
+    end)
+
     children =
-      Enum.each(available_order_buttons, fn {floor, button_type} -> ButtonPoller.child_spec(floor, button_type) end)
+      Enum.map(available_order_buttons, fn button ->
+        ButtonPoller.child_spec(button.floor, button.type)
+      end)
 
     opts = [strategy: :one_for_one, name: Button.Supervisor]
     Supervisor.init(children, opts)
   end
-
 
   @doc """
   Credited: Jostein Løwer. https://github.com/jostlowe/kokeplata/tree/master/lib (24.03.19)
@@ -49,11 +54,13 @@ defmodule ButtonPoller.Supervisor do
   """
 
   def get_buttons_of_type(button_type, top_floor) do
-    floor_list = case button_type do
-      :hall_up -> 0..top_floor-1
-      :hall_down -> 1..top_floor
-      :cab -> 0..top_floor
-    end
+    floor_list =
+      case button_type do
+        :hall_up -> 0..(top_floor - 1)
+        :hall_down -> 1..top_floor
+        :cab -> 0..top_floor
+      end
+
     floor_list |> Enum.map(fn floor -> %{floor: floor, type: button_type} end)
   end
 
@@ -77,10 +84,13 @@ defmodule ButtonPoller.Supervisor do
       ]
   """
 
-  def get_all_buttons(top_floor) do
-    get_all_button_types() |> Enum.map(fn button_type -> get_buttons_of_type(button_type, top_floor) end) |> List.flatten
-  end
+  def get_all_buttons(floors) do
+    top_floor = floors - 1
 
+    get_all_button_types()
+    |> Enum.map(fn button_type -> get_buttons_of_type(button_type, top_floor) end)
+    |> List.flatten()
+  end
 end
 
 defmodule ButtonPoller do
@@ -90,12 +100,17 @@ defmodule ButtonPoller do
   """
   use Task
 
-  def start_link([floor, button_type]) do
+  def start_link(floor, button_type) do
     Task.start_link(__MODULE__, :poller, [floor, button_type, :released])
   end
 
   def child_spec(floor, button_type) do
-    %{id: to_string(floor) <> to_string(button_type), start: {__MODULE__, :start_link, [floor, button_type]}, restart: :permanent, type: :worker}
+    %{
+      id: to_string(floor) <> to_string(button_type),
+      start: {__MODULE__, :start_link, [floor, button_type]},
+      restart: :permanent,
+      type: :worker
+    }
   end
 
   @doc """
@@ -106,7 +121,7 @@ defmodule ButtonPoller do
   """
 
   def poller(floor, button_type, :released) do
-    :timer.sleep(200)
+    :timer.sleep(100)
 
     case Driver.get_order_button_state(floor, button_type) do
       0 ->

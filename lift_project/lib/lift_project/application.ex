@@ -8,20 +8,8 @@ defmodule LiftProject.Application do
 
   def start(_type, _args) do
     children = [
-      {Driver, []},
-      {Lift, []},
-      {OrderDistribution, []},
-      {WatchDog, []},
-      {ButtonPoller.Supervisor, [@floors]},
-      {FloorPoller, [:floor]},
-      {NetworkHandler, [22_010]},
-      {Task.Supervisor, name: Auction.Supervisor},
-      {OrderServer, []}
-      # Starts a worker by calling: LiftProject.Worker.start_link(arg)
-      # {LiftProject.Worker, arg}
+      {Lifproject.Supervisor, []}
     ]
-
-    NetworkInitialization.boot_node("n", 1_000)
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported optionsS
