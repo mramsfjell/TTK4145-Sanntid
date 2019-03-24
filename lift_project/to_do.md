@@ -10,6 +10,7 @@ vurder skriving til fil som backup
 
 
 Dokumentasjon
+Skrive eksempler i doc til OrderServer - Order data functions
 Mer testing
 
 
