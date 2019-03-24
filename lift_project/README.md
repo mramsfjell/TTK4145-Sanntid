@@ -9,9 +9,9 @@ Our distribution system for orders relies on the concept of auctions and bids, w
 ###### I/O Poller
 Handles all of input and outputs, eg. polling floor- and button sensors.
 ###### Lift
-Takes care of basic lift performance, driving the lift in a specified direction and stopping when reaching a wanted floor.
+Takes care of basic lift performance, driving the lift towards a specific order and stopping when reaching a wanted floor.
 ###### Network Handler
-Performs network handling, eg. booting nodes and controlling the UDP client/server.
+Performs network handling, eg. booting nodes and controlling the UDP client/server. We use UDP for discovery of new nodes.
 ###### Order Distribution
 Distributes orders to nodes based on a cost calculation in addition to redistributing orders given from the watchdog.
 ###### Order Server
