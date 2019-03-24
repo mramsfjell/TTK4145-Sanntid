@@ -16,6 +16,7 @@ defmodule WatchDog do
   use GenServer
   @name :watch_dog
   @watchdog_timer 30_000
+  @backup_file "watchdog_backup.txt"
 
   @cab_orders [:cab]
   @hall_orders [:hall_up, :hall_down]
@@ -53,13 +54,14 @@ defmodule WatchDog do
   # Callbacks-------------------------------------------------------------------
   def init([]) do
     :net_kernel.monitor_nodes(true)
-    state = %{active: %{}, stand_by: %{}}
+    state = read_from_backup(@backup_file)
     {:ok, state}
   end
 
   def handle_call({:new_order, order}, _from, state) do
     new_state = add_order(state, :active, order)
     Process.send_after(self(), {:order_expiered, order.id}, @watchdog_timer)
+    FileBackup.write(new_state, @backup_file)
     {:reply, :ok, new_state}
   end
 
@@ -69,6 +71,7 @@ defmodule WatchDog do
 
   def handle_cast({:order_complete, order}, state) do
     updated_state = remove_order(state, :active, order)
+    FileBackup.write(updated_state, @backup_file)
     {:noreply, updated_state}
   end
 
@@ -95,6 +98,7 @@ defmodule WatchDog do
       reinject_order(hall_orders)
       updated_state = move_to_standby(state, cab_orders)
       IO.inspect(updated_state)
+      FileBackup.write(updated_state, @backup_file)
       {:noreply, updated_state}
     else
       _ ->
@@ -112,6 +116,7 @@ defmodule WatchDog do
 
     reinject_order(standby_orders)
     new_state = remove_order(state, :stand_by, standby_orders)
+    FileBackup.write(new_state, @backup_file)
     {:noreply, new_state}
   end
 
@@ -219,5 +224,29 @@ defmodule WatchDog do
     IO.inspect(new_active)
     IO.inspect(new_standby)
     %{active: new_active, stand_by: new_standby}
+  end
+
+  def read_from_backup(filename) do
+    case FileBackup.read(filename) do
+      {:error, :enoent} ->
+        %{active: %{}, stand_by: %{}}
+
+      {:ok, backup_state} ->
+        active =
+          backup_state
+          |> Map.get(:active)
+          |> Map.values()
+          |> Enum.filter(fn order -> Time.diff(Time.utc_now(), order.time) <= 120 end)
+          |> Map.new(fn order -> {order.id, order} end)
+
+        stand_by =
+          backup_state
+          |> Map.get(:stand_by)
+          |> Map.values()
+          |> Enum.filter(fn order -> Time.diff(Time.utc_now(), order.time) <= 10_000 end)
+          |> Map.new(fn order -> {order.id, order} end)
+
+        %{active: active, stand_by: stand_by}
+    end
   end
 end

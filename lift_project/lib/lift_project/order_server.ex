@@ -11,6 +11,7 @@ defmodule OrderServer do
   @down_dir [:cab, :hall_down]
   @name :order_server
   @direction_map %{up: 1, down: -1}
+  @backup_file "order_server_backup.txt"
 
   def start_link([]) do
     GenServer.start_link(__MODULE__, [], name: @name)
@@ -21,7 +22,7 @@ defmodule OrderServer do
   @doc """
   Casts that the lift is leaving a floor. The next floor is calculated, given the direction,
   and the new state is updated with the new floor and the given direction.
-  """ 
+  """
   def leaving_floor(floor, dir) do
     GenServer.cast(@name, {:lift_leaving_floor, floor, dir})
   end
@@ -67,9 +68,11 @@ defmodule OrderServer do
   def init([]) do
     case Lift.get_state() do
       {:ok, floor, dir} ->
+        {active, complete} = read_from_backup(@backup_file)
+
         state = %{
-          active: %{},
-          complete: %{},
+          active: active,
+          complete: complete,
           floor: floor,
           dir: dir,
           last_order: nil
@@ -95,6 +98,7 @@ defmodule OrderServer do
   end
 
   def handle_cast({:order_complete, order}, state) do
+    IO.inspect(order, label: "complete order")
     orders = fetch_orders(state.active, Node.self(), order.floor, order.button_type, state.dir)
 
     new_state =
@@ -109,12 +113,13 @@ defmodule OrderServer do
 
     broadcast_complete_order(orders)
     assign_new_lift_order(new_state)
-
+    FileBackup.write(new_state, @backup_file)
     {:noreply, %{} = new_state}
   end
 
   def handle_cast({:lift_ready}, state) do
     new_state = assign_new_lift_order(state)
+    FileBackup.write(new_state, @backup_file)
     {:noreply, %{} = new_state}
   end
 
@@ -138,6 +143,7 @@ defmodule OrderServer do
       |> assign_new_lift_order
 
     set_button_light(order, :on)
+    FileBackup.write(new_state, @backup_file)
     {:reply, order, %{} = new_state}
   end
 
@@ -150,6 +156,7 @@ defmodule OrderServer do
     new_state = remove_order(state, order)
     set_button_light(order, :off)
     WatchDog.order_complete(order)
+    # FileBackup.write(state, @backup_file)
     {:noreply, %{} = new_state}
   end
 
@@ -264,7 +271,7 @@ defmodule OrderServer do
   @doc """
   Send a given order and an :order_complete_broadcast message to the :order_server
   on the remote_node.
-  
+
   Returns :ok if the message is sent.
   """
   def send_complete_order(remote_node, order) do
@@ -308,5 +315,29 @@ defmodule OrderServer do
   def set_button_light(%Order{button_type: button, floor: floor}, light_state)
       when button == :hall_up or button == :hall_down do
     Driver.set_order_button_light(floor, button, light_state)
+  end
+
+  def read_from_backup(filename) do
+    case FileBackup.read(filename) do
+      {:error, :enoent} ->
+        {%{}, %{}}
+
+      {:ok, backup_state} ->
+        active =
+          backup_state
+          |> Map.get(:active)
+          |> Map.values()
+          |> Enum.filter(fn order -> Time.diff(Time.utc_now(), order.time) <= 120 end)
+          |> Map.new(fn order -> {order.id, order} end)
+
+        complete =
+          backup_state
+          |> Map.get(:complete)
+          |> Map.values()
+          |> Enum.filter(fn order -> Time.diff(Time.utc_now(), order.time) <= 1 end)
+          |> Map.new(fn order -> {order.id, order} end)
+
+        {active, complete}
+    end
   end
 end

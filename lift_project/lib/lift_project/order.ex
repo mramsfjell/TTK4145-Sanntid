@@ -15,7 +15,7 @@ defmodule Order do
       floor: floor,
       button_type: button_type,
       id: make_ref(),
-      time: Time.utc_now(),
+      time: Time.utc_now() |> Time.truncate(:seconds),
       node: Node.self()
     }
   end

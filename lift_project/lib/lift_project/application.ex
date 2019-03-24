@@ -8,7 +8,7 @@ defmodule LiftProject.Application do
 
   def start(_type, _args) do
     children = [
-      {Lifproject.Supervisor, []}
+      {Liftproject.Supervisor, []}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

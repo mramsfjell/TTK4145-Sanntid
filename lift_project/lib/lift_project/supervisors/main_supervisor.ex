@@ -1,4 +1,4 @@
-defmodule Lifproject.Supervisor do
+defmodule Liftproject.Supervisor do
   use Supervisor
   @floors 4
   def start_link(args) do
