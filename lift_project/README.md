@@ -3,11 +3,11 @@ Our lift project is written in Elixir, a functional programming language. The au
 
 For the extensive specifications for the project, see the [course project site](https://github.com/TTK4145/Project).
 
-Our distribution system for orders relies on the concept of auctions and bids, where the lift with the lowest cost for the respective order will be assigned the order. In addition, all orders are assigned a watchdog in the form of another node on the network. If the order isn't completed within a specific time, it's redistributed.
+Our distribution system for orders relies on the concept of auctions and bids, where the lift with the lowest cost for the respective order will be assigned the order. In addition, all orders are assigned a watchdog in the form of another node in the network. If the order isn't completed within a specific time, it's redistributed.
 
 ## File descriptions
 ###### I/O Poller
-Handles all of input and outputs, eg. polling floor and button sensors.
+Handles all of input and outputs, eg. polling floor- and button sensors.
 ###### Lift
 Takes care of basic lift performance, driving the lift in a specified direction and stopping when reaching a wanted floor.
 ###### Network Handler
@@ -18,7 +18,7 @@ Distributes orders to nodes based on a cost calculation in addition to redistrib
 Keeps track of orders collected from Order Distribution, in addition to setting hall lights and calculating the cost of a given order for the respective lift.
 ###### Order
 Sets the structure of an order in addition to tests if order is at a given floor.
-###### Watch Dog
+###### Watchdog
 Takes care of any order not being handled within reasonable time, set by the timer length @watchdog_timer.
 
 ## Assumptions
@@ -30,6 +30,8 @@ Takes care of any order not being handled within reasonable time, set by the tim
 ## What could have been improved?
 For mange moduler?
 
+## Accreditations
+Snippets of Jostein Løwer's code at his [repository](https://github.com/jostlowe/kokeplata) has been used as inspiration in some of our modules. There are also some functions from his examples which are used directly. For more details on Jostein's code, see the documentation.
 
 ## Installation
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
