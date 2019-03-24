@@ -40,14 +40,16 @@ defmodule OrderServer.Cost do
   end
 
   @doc """
-  Calculates path length by mooving to the extreme points for the path until
-  it passes floor where the order is in a valid direction for the order
+  Calculates path length by moving to the extreme points of the path until the
+  lift passes a floor where the order is in the same direction as the lift is moving.
   """
-
   def path_length([], {start_floor, _dir}, %{floor: end_floor}) do
     abs(end_floor - start_floor)
   end
 
+  @doc """
+
+  """
   def path_length(
         orders,
         {start_floor, :up},

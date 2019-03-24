@@ -1,7 +1,7 @@
 defmodule OrderDistribution do
   @moduledoc """
   This module takes care of distributing orders,
-  both new orders from I/O and reinjected orders from WatchDog.
+  both new orders from I/O and reinjected orders from the watchdog.
   """
   use GenServer
 
@@ -12,17 +12,17 @@ defmodule OrderDistribution do
     GenServer.start_link(__MODULE__, [], name: @name)
   end
 
-  # API ----------------------------------------------------------
+  # API ------------------------------------------------------------------------
 
   @doc """
-  Reinjected order from WatchDog.
+  Adds new order as result of reinjection of order from WatchDog.
   """
   def new_order(order = %Order{}) do
     GenServer.cast(@name, {:new_order, order})
   end
 
   @doc """
-  New order from I/O.
+  Adds new order as result of I/O action.
   """
   def new_order(floor, button_type)
       when is_integer(floor) and button_type in @valid_orders do
@@ -30,7 +30,7 @@ defmodule OrderDistribution do
     new_order(order)
   end
 
-  # Callbacks ----------------------------------------------------
+  # Callbacks ------------------------------------------------------------------
 
   def init(_args) do
     {:ok, %{}}
@@ -42,6 +42,16 @@ defmodule OrderDistribution do
   end
 end
 
+<<<<<<< HEAD
+  # Helper functions -----------------------------------------------------------
+
+  @doc """
+  Assigns itself as its own watchdog for the specified order when no other nodes
+  are present in the network.
+  """
+  def assign_watchdog(order, [] = node_list) do
+    Map.put(order, :watch_dog, Node.self())
+=======
 defmodule Auction.Supervisor do
   def start_link(_args) do
     DynamicSupervisor.start_link(name: :auction_supervisor)
@@ -49,11 +59,27 @@ defmodule Auction.Supervisor do
 
   def start_child(order) do
     DynamicSupervisor.start_child(__MODULE__, {Auction, order})
+>>>>>>> 2e624bee5d20ecd91061e61d907eb592d8967586
   end
 end
 
+<<<<<<< HEAD
+  @doc """
+  Assigns a random node in the network as watchdog for the specified order.
+  ## Examples
+      iex > order = {2,:hall_up}
+      iex > node_list = [Node.self]
+      iex > assign_watchdog(order, node_list)
+      {{2, :hall_up}, Node.self}
+  """
+  def assign_watchdog(order, node_list) do
+    watch_dog =
+      ([Node.self() | node_list] -- [order.node])
+      |> Enum.random()
+=======
 defmodule Auction do
   use Task
+>>>>>>> 2e624bee5d20ecd91061e61d907eb592d8967586
 
   @auction_timeout 1_000
 
@@ -71,16 +97,31 @@ defmodule Auction do
     }
   end
 
+  @doc """
+  Executes an edge case auction for the specified order. As this is a cab order,
+  the only allowed winner of the auction is the node that called the order.
+  """
   def execute_auction(%{button_type: :cab} = order) do
     IO.puts("Cab auction")
     IO.inspect(order)
     find_lowest_bidder([order.node], order)
   end
 
+  @doc """
+  Executes an auction to find the lift among the active nodes with lowest cost
+  for the specified order.
+  """
   def execute_auction(order) do
     find_lowest_bidder([Node.self() | Node.list()], order)
   end
 
+<<<<<<< HEAD
+  @doc """
+  Collect bids from the nodes in the auction for the specified order. If the order
+  isn't already completed, the order is given to the lowest bidder. In addition,
+  post-auction processing is performed.
+  """
+=======
   def assign_watchdog(order, [] = node_list) do
     Map.put(order, :watch_dog, Node.self())
   end
@@ -93,6 +134,7 @@ defmodule Auction do
     Map.put(order, :watch_dog, watch_dog)
   end
 
+>>>>>>> 2e624bee5d20ecd91061e61d907eb592d8967586
   def find_lowest_bidder(nodes, order) do
     {bids, _bad_nodes} =
       GenServer.multi_call(nodes, :order_server, {:evaluate_cost, order}, @auction_timeout)
@@ -109,6 +151,10 @@ defmodule Auction do
     end
   end
 
+  @doc """
+  Checks if none of the specified bids says they have completed the order that
+  the bids are for.
+  """
   def check_valid_bids(bids) do
     case(Enum.any?(bids, fn {_node, reply} -> {:completed, 0} == reply end)) do
       true -> :already_complete
@@ -116,13 +162,20 @@ defmodule Auction do
     end
   end
 
+  @doc """
+  Extracts the node with lowest cost from a list of bids.
+  """
   def filter_lowest_bidder(bids) do
     {winner_node, min_bids} =
       Enum.min_by(bids, fn {node_name, cost} -> cost end, fn -> {Node.self(), 0} end)
   end
 
+  @doc """
+  Assigns the order to the winner node, as well as assigning a watchdog to the
+  same order. Broadcasts the result of the auction to the other nodes.
+  """
   def post_process_auction(order, winner_node) do
-    IO.puts("result")
+    IO.puts("Result")
 
     order
     |> Map.put(:node, winner_node)
@@ -131,6 +184,9 @@ defmodule Auction do
     |> broadcast_result
   end
 
+  @doc """
+  Broadcasts an order to all other nodes in the network as a result of an auction.
+  """
   def broadcast_result(order) do
     GenServer.multi_call(
       [Node.self(), Node.list()],
