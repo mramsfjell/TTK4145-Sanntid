@@ -1,8 +1,8 @@
 defmodule OrderServer do
   @moduledoc """
-  This module keeps track of orders collected from OrderDistribution,
-  in addition to setting hall lights and calculating the cost of a
-  given order for the respective lift.
+  This module keeps track of orders collected from OrderDistribution, in addition to
+  setting hall lights and calculating the cost of a given order for the respective lift.
+  During initialization, if the Lift process is not found, OrderServer tries again.
   """
   use GenServer
 
@@ -16,11 +16,11 @@ defmodule OrderServer do
     GenServer.start_link(__MODULE__, [], name: @name)
   end
 
-  # API -----------------------------------------------------------------------
+  # API ---------------------------------------------------------------------------
 
   @doc """
-  Casts that the lift is leaving a floor. The next floor is calculated,
-  given the direction, and is set as the new state.
+  Casts that the lift is leaving a floor. The next floor is calculated, given the direction,
+  and the new state is updated with the new floor and the given direction.
   """ 
   def leaving_floor(floor, dir) do
     GenServer.cast(@name, {:lift_leaving_floor, floor, dir})
@@ -35,22 +35,21 @@ defmodule OrderServer do
   end
 
   @doc """
-  Casting that a lift is ready for a new order.
+  Casting that a lift is ready to receive a new order.
   """
   def lift_ready() do
     GenServer.cast(@name, {:lift_ready})
   end
 
   @doc """
-  Calling for the cost of a lift potentially executing a order
+  Calling for the cost of a lift potentially executing a order.
   """
-
   def evaluate_cost(order) do
     GenServer.call(@name, {:evaluate_cost, order})
   end
 
   @doc """
-  Create new order
+  Create a new order, and turns on the button light.
   """
   def new_order(order) do
     GenServer.call(@name, {:new_order, order})
@@ -63,7 +62,7 @@ defmodule OrderServer do
     GenServer.call(@name, {:get})
   end
 
-  # Callbacks --------------------------------------------------
+  # Callbacks -------------------------------------------------------------------
 
   def init([]) do
     case Lift.get_state() do
@@ -154,39 +153,55 @@ defmodule OrderServer do
     {:noreply, %{} = new_state}
   end
 
-  # Order data functions ------------------------------------------------------
+  # Order data functions --------------------------------------------------------------
 
   @doc """
   Add the given order to the :active Map in the state of the OrderServer.
+
+  ## Examples
   """
   def add_order(state, order) do
     put_in(state, [:active, order.id], order)
   end
 
   @doc """
-  
+  Removes a list of orders.
+
+  ## Examples
   """
   def remove_order(state, orders) when is_list(orders) do
     Enum.reduce(orders, state, fn order, int_state -> remove_order(int_state, order) end)
   end
 
   @doc """
-  
+  Removes an order by moving an order from the :active Map to the :complete Map.
+  The order is a struct as defined in the Order module.
+
+  Returns the updated state Map.
+
+  ## Examples
   """
-  def remove_order(state, %Order{time: time} = order) do
-    {_complete_order, new_state} = pop_in(state, [:active, time])
+  def remove_order(state, %Order{id: id} = order) do
+    {_complete_order, new_state} = pop_in(state, [:active, order.id])
     new_state = put_in(new_state, [:complete, order.id], order)
   end
 
   @doc """
-  
+  Check if there exists an order with a given id in the :complete Map.
+
+  Returns true if this is the case.
+
+  ## Examples
   """
   def order_in_complete?(state, order) do
     Enum.any?(state.complete, fn {id, _complete_order} -> id == order.id end) |> IO.inspect()
   end
 
   @doc """
-  
+  Returns a list of all orders being handled by the node corresponding to node_name,
+  with the order floor matching the provided floor.
+
+  ## Examples
   """
   def fetch_orders(orders, node_name, floor, button, dir) do
     order_dir = button_to_dir(button, dir)
@@ -197,6 +212,12 @@ defmodule OrderServer do
     |> Enum.filter(fn order -> Order.order_at_floor?(order, floor, order_dir) end)
   end
 
+  @doc """
+  Returns a new direction given a button_type and the last direction.
+  If button_type is :cab, the last direction is returned.
+
+  ## Examples
+  """
   def button_to_dir(button, dir) do
     case button do
       :hall_up -> :up
@@ -205,8 +226,13 @@ defmodule OrderServer do
     end
   end
 
-  # Shell functions --------------------------------------------------------
+  # Shell functions ---------------------------------------------------------------------
 
+  @doc """
+  Assigns a new order to the lift, and updates the :last_order in the state.
+
+  Returns the updated state Map.
+  """
   def assign_new_lift_order(%{floor: floor, dir: dir} = state) do
     active_orders =
       Map.values(state.active) |> Enum.filter(fn order -> order.node == Node.self() end)
@@ -221,20 +247,39 @@ defmodule OrderServer do
     end
   end
 
+  @doc """
+  Send a given order and an :order_complete_broadcast message to the :order_server
+  on the remote_node.
+  
+  Returns :ok if the message is sent.
+  """
   def send_complete_order(remote_node, order) do
     Process.send({:order_server, remote_node}, {:order_complete_broadcast, order}, [:noconnect])
   end
 
+  @doc """
+  Broadcasts a list of completed orders.
+  """
   def broadcast_complete_order(orders) when is_list(orders) do
     Enum.each(orders, fn order -> broadcast_complete_order(order) end)
   end
 
+  @doc """
+  Broadcasts an order to all nodes in the cluster, when the order is a
+  struct as defined in the Order module.
+  """
   def broadcast_complete_order(%Order{} = order) do
     Enum.each(Node.list(), fn remote_node ->
       send_complete_order(remote_node, order)
     end)
   end
 
+  @doc """
+  Set cab light for a given order struct, if the executing node of the order
+  matches Node.self(). light_state can be :on or :off.
+
+  Returns :ok
+  """
   def set_button_light(%Order{button_type: :cab} = order, light_state) do
     if order.node == Node.self() do
       Driver.set_order_button_light(order.floor, order.button_type, light_state)
@@ -243,6 +288,9 @@ defmodule OrderServer do
     :ok
   end
 
+  @doc """
+  Set hall light for a given order struct. light_state can be :on or :off.
+  """
   def set_button_light(%Order{button_type: button, floor: floor}, light_state)
       when button == :hall_up or button == :hall_down do
     Driver.set_order_button_light(floor, button, light_state)

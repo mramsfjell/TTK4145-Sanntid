@@ -13,11 +13,10 @@ defmodule ButtonPoller.Supervisor do
   @spec init(:ok, floors :: integer) :: {:ok, tuple()}
   """
   def init({:ok, floors}) do
-    available_order_buttons = get_all_button_types(floors)
+    available_order_buttons = get_all_buttons(floors)
     Enum.each(available_order_buttons, fn {floor,button_type} -> Driver.set_order_button_light(floor, button_type, :off) end)
     children =
-      Enum.each(available_order_buttons, fn {floor, button_type} -> ButtonPoller.child_spec(floor, button_type)) end)
-    end
+      Enum.each(available_order_buttons, fn {floor, button_type} -> ButtonPoller.child_spec(floor, button_type) end)
 
     opts = [strategy: :one_for_one, name: Button.Supervisor]
     Supervisor.init(children, opts)
@@ -55,7 +54,7 @@ defmodule ButtonPoller.Supervisor do
       :hall_down -> 1..top_floor
       :cab -> 0..top_floor
     end
-    floor_list |> Enum.map(fn floor -> %ElevatorOrder{floor: floor, type: button_type} end)
+    floor_list |> Enum.map(fn floor -> %{floor: floor, type: button_type} end)
   end
 
   @doc """
@@ -96,7 +95,7 @@ defmodule ButtonPoller do
   end
 
   def child_spec(floor, button_type) do
-    %{id: to_string(floor) <> to_string(button_type), start: {__MODULE__, :start_link, [button_info]}, restart: :permanent, type: :worker}
+    %{id: to_string(floor) <> to_string(button_type), start: {__MODULE__, :start_link, [floor, button_type]}, restart: :permanent, type: :worker}
   end
 
   @doc """
