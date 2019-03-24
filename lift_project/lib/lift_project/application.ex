@@ -7,25 +7,24 @@ defmodule LiftProject.Application do
   @floors 4
 
   def start(_type, _args) do
-    # List all child processes to be supervised
     children = [
       {Driver, []},
       {Lift, []},
-      # {FloorSensor,[]},
       {OrderDistribution, []},
       {WatchDog, []},
       {ButtonPoller.Supervisor, [@floors]},
       {FloorPoller, [:floor]},
       {NetworkHandler, [22_010]},
+      {Task.Supervisor, name: Auction.Supervisor},
       {OrderServer, []}
       # Starts a worker by calling: LiftProject.Worker.start_link(arg)
       # {LiftProject.Worker, arg}
     ]
 
-  #  NetworkHandler.boot_node("n", 1_000)
+    NetworkInitialization.boot_node("n", 1_000)
 
     # See https://hexdocs.pm/elixir/Supervisor.html
-    # for other strategies and supported options
+    # for other strategies and supported optionsS
     opts = [strategy: :one_for_one, name: LiftProject.Supervisor]
     Supervisor.start_link(children, opts)
   end
