@@ -56,7 +56,7 @@ defmodule OrderServer do
   end
 
   @doc """
-  Get current orders, for debugging purposes
+  Get current orders, used for debugging purposes only.
   """
   def get_orders() do
     GenServer.call(@name, {:get})
@@ -159,15 +159,17 @@ defmodule OrderServer do
   Add the given order to the :active Map in the state of the OrderServer.
 
   ## Examples
+    iex> state = %{active: %{}}
+    iex> order = Order.new(2,:hall_up)
+    iex> OrderServer.add_order(state,order)
+    %{active: %{order.id => order}}
   """
   def add_order(state, order) do
     put_in(state, [:active, order.id], order)
   end
 
   @doc """
-  Removes a list of orders.
-
-  ## Examples
+  Removes a list of orders that has been handled.
   """
   def remove_order(state, orders) when is_list(orders) do
     Enum.reduce(orders, state, fn order, int_state -> remove_order(int_state, order) end)
@@ -180,6 +182,11 @@ defmodule OrderServer do
   Returns the updated state Map.
 
   ## Examples
+    iex> order = Order.new(2,:hall_up)
+    iex> state = %{active: %{}, complete: %{}}
+    iex> OrderServer.add_order(state,order)
+    iex> OrderServer.remove_order(state,order)
+    %{active: %{}, complete: %{order.id => order}}
   """
   def remove_order(state, %Order{id: id} = order) do
     {_complete_order, new_state} = pop_in(state, [:active, order.id])
@@ -192,6 +199,11 @@ defmodule OrderServer do
   Returns true if this is the case.
 
   ## Examples
+    iex> order_1 = Order.new(1,:cab)
+    iex> order_2 = Order.new(3,:hall_down)
+    iex> state = %{complete: %{order_1.id => order_1, order_2.id => order_2}}
+    iex> Order.order_in_complete?(state, order_1)
+    true
   """
   def order_in_complete?(state, order) do
     Enum.any?(state.complete, fn {id, _complete_order} -> id == order.id end) |> IO.inspect()
@@ -200,8 +212,6 @@ defmodule OrderServer do
   @doc """
   Returns a list of all orders being handled by the node corresponding to node_name,
   with the order floor matching the provided floor.
-
-  ## Examples
   """
   def fetch_orders(orders, node_name, floor, button, dir) do
     order_dir = button_to_dir(button, dir)
@@ -217,6 +227,10 @@ defmodule OrderServer do
   If button_type is :cab, the last direction is returned.
 
   ## Examples
+    iex> button_to_dir(:cab, :down)
+    :down
+    iex> button_to_dir(:hall_up, :down)
+    :up
   """
   def button_to_dir(button, dir) do
     case button do
@@ -276,7 +290,7 @@ defmodule OrderServer do
 
   @doc """
   Set cab light for a given order struct, if the executing node of the order
-  matches Node.self(). light_state can be :on or :off.
+  matches Node.self(). light_state can be :on/:off.
 
   Returns :ok
   """
@@ -289,7 +303,7 @@ defmodule OrderServer do
   end
 
   @doc """
-  Set hall light for a given order struct. light_state can be :on or :off.
+  Set hall light for a given order struct. light_state can be :on/:off.
   """
   def set_button_light(%Order{button_type: button, floor: floor}, light_state)
       when button == :hall_up or button == :hall_down do
