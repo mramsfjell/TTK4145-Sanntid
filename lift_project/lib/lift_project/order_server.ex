@@ -154,10 +154,10 @@ defmodule OrderServer do
     {:noreply, %{} = new_state}
   end
 
-  # Order data functions--------------------------------------------------------
+  # Order data functions ------------------------------------------------------
 
   @doc """
-  Add the given order to the :active Map.
+  Add the given order to the :active Map in the state of the OrderServer.
   """
   def add_order(state, order) do
     put_in(state, [:active, order.time], order)
@@ -178,11 +178,16 @@ defmodule OrderServer do
     new_state = put_in(new_state, [:complete, order.time], order)
   end
 
+  @doc """
   
+  """
   def order_in_complete?(state, order) do
     Enum.any?(state.complete, fn {id, _complete_order} -> id == order.time end) |> IO.inspect()
   end
 
+  @doc """
+  
+  """
   def fetch_orders(orders, node_name, floor, button, dir) do
     order_dir = button_to_dir(button, dir)
 

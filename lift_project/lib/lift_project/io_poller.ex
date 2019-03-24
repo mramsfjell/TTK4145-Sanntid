@@ -9,7 +9,7 @@ defmodule ButtonPoller.Supervisor do
   end
 
   @doc """
-  Initializes the supervisor for the button poller.
+  Initializes the supervisor for the button poller. Turns off all button lights.
   @spec init(:ok, floors :: integer) :: {:ok, tuple()}
   """
   def init({:ok, floors}) do
@@ -25,6 +25,7 @@ defmodule ButtonPoller.Supervisor do
 
 
   @doc """
+  Credited: Jostein Løwer. https://github.com/jostlowe/kokeplata/tree/master/lib (24.03.19)
   Returns all the different types of buttons on the elevator panel.
   ## Examples
       iex> ButtonPoller.Supervisor.get_all_button_types
@@ -36,6 +37,7 @@ defmodule ButtonPoller.Supervisor do
   end
 
   @doc """
+  Credited: Jostein Løwer. https://github.com/jostlowe/kokeplata/tree/master/lib (24.03.19)
   Returns all possible orders of a single button type, given the number of the top floor
   Returns a list of tuples on the from {button_type, floor}
   ## Examples
@@ -57,7 +59,8 @@ defmodule ButtonPoller.Supervisor do
   end
 
   @doc """
-  Returns all possible orders on a single elevator
+  Credited: Jostein Løwer. https://github.com/jostlowe/kokeplata/tree/master/lib (24.03.19)
+  Returns all possible orders on a single elevator.
   Returns a list of tuples on the from {button_type, floor}
   ## Examples
       iex> ButtonPoller.Supervisor.get_all_buttons(3)
@@ -97,6 +100,7 @@ defmodule ButtonPoller do
   end
 
   @doc """
+  Poller logic influenced by Jostein Løwer.
   State transitions for the state machine, the button poller.
   Registrates if a given button is not being pushed, transitioning from
   low to high or high to low, or being held continuously.
@@ -159,6 +163,7 @@ defmodule FloorPoller do
   end
 
   @doc """
+  Poller logic influenced by Jostein Løwer.
   State transitions for the state machine, the floor sensor poller.
   Registrates if a given floor sensor is high, or if the lift is currently
   between floors.
