@@ -7,13 +7,14 @@ defmodule Order do
   @down_dir [:cab, :hall_down]
   @valid_order [:hall_down, :cab, :hall_up]
   @enforce_keys [:floor, :button_type]
-  defstruct [:floor, :button_type, :time, node: nil, watch_dog: nil]
+  defstruct [:floor, :button_type, :id, :time, node: nil, watch_dog: nil]
 
   def new(floor, button_type)
       when is_integer(floor) and button_type in @valid_order do
     %Order{
       floor: floor,
       button_type: button_type,
+      id: make_ref(),
       time: Time.utc_now(),
       node: Node.self()
     }
