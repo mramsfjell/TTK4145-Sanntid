@@ -160,7 +160,7 @@ defmodule OrderServer do
   Add the given order to the :active Map in the state of the OrderServer.
   """
   def add_order(state, order) do
-    put_in(state, [:active, order.time], order)
+    put_in(state, [:active, order.id], order)
   end
 
   @doc """
@@ -175,14 +175,14 @@ defmodule OrderServer do
   """
   def remove_order(state, %Order{time: time} = order) do
     {_complete_order, new_state} = pop_in(state, [:active, time])
-    new_state = put_in(new_state, [:complete, order.time], order)
+    new_state = put_in(new_state, [:complete, order.id], order)
   end
 
   @doc """
   
   """
   def order_in_complete?(state, order) do
-    Enum.any?(state.complete, fn {id, _complete_order} -> id == order.time end) |> IO.inspect()
+    Enum.any?(state.complete, fn {id, _complete_order} -> id == order.id end) |> IO.inspect()
   end
 
   @doc """

@@ -48,7 +48,7 @@ defmodule WatchDog do
 
   def handle_call({:new_order, order}, _from, state) do
     new_state = add_order(state, :active, order)
-    Process.send_after(self(), {:order_expiered, order.time}, @watchdog_timer)
+    Process.send_after(self(), {:order_expiered, order.id}, @watchdog_timer)
     {:reply, :ok, new_state}
   end
 
@@ -105,7 +105,7 @@ defmodule WatchDog do
   end
 
   def add_order(state, order_state, order) do
-    put_in(state, [order_state, order.time], order)
+    put_in(state, [order_state, order.id], order)
   end
 
   def remove_order(state, _order_state, []) do
@@ -121,7 +121,7 @@ defmodule WatchDog do
   end
 
   def remove_order(state, order_state, %Order{} = order) do
-    {_complete, new_state} = pop_in(state, [order_state, order.time])
+    {_complete, new_state} = pop_in(state, [order_state, order.id])
     new_state
   end
 
@@ -161,12 +161,12 @@ defmodule WatchDog do
     new_active =
       state
       |> Map.get(:active)
-      |> Map.delete(order.time)
+      |> Map.delete(order.id)
 
     new_standby =
       state
       |> Map.get(:stand_by)
-      |> Map.put(order.time, order)
+      |> Map.put(order.id, order)
 
     # Rebuild map
     IO.inspect(new_active)
