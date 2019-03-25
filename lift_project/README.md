@@ -20,6 +20,8 @@ Keeps track of orders collected from Order Distribution, in addition to setting 
 Sets the structure of an order in addition to tests if order is at a given floor.
 ###### Watchdog
 Takes care of any order not being handled within reasonable time, set by the timer length @watchdog_timer.
+###### File back up
+Reads and writes to file to keep a record of the current and previous states. 
 
 ## Assumptions
 - No multiple simultaneous errors.
