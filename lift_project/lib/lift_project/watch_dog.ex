@@ -44,7 +44,7 @@ defmodule WatchDog do
 
   @doc """
   Gets the current state of the orders. Returns a map of the states and the orders
-  affiliated with the given state. Stand_by is the state of cab calls from
+  affiliated with the given state. Standby is the state of cab calls from
   dead nodes. Active is the state of running nodes.
   """
   def get_state() do
@@ -59,10 +59,14 @@ defmodule WatchDog do
   end
 
   def handle_call({:new_order, order}, _from, state) do
-    new_state = add_order(state, :active, order)
-    Process.send_after(self(), {:order_expiered, order.id}, @watchdog_timer)
+    new_state =
+      state
+      |> add_order(:active, order)
+      |> start_timer(order)
+
+    # timer = Process.send_after(self(), {:order_expiered, order.id}, @watchdog_timer)
     FileBackup.write(new_state, @backup_file)
-    {:reply, :ok, new_state}
+    {:reply, :ok, %{} = new_state}
   end
 
   def handle_call(:get, _from, state) do
@@ -70,54 +74,64 @@ defmodule WatchDog do
   end
 
   def handle_cast({:order_complete, order}, state) do
-    updated_state = remove_order(state, :active, order)
+    updated_state =
+      state
+      |> stop_timer(order)
+      |> remove_order(:active, order)
+
     FileBackup.write(updated_state, @backup_file)
-    {:noreply, updated_state}
+    {:noreply, %{} = updated_state}
   end
 
-  def handle_info({:order_expiered, time_stamp}, state) do
-    case get_in(state, [:active, time_stamp]) do
+  def handle_info({:order_expiered, id}, state) do
+    case get_in(state, [:active, id]) do
       nil ->
         {:noreply, state}
 
       order ->
-        IO.puts("Order expired")
-        IO.inspect(order)
         reinject_order(order)
-        new_state = remove_order(state, :active, order)
-        {:noreply, new_state}
+
+        new_state =
+          state
+          |> remove_order(:timers, order)
+          |> remove_order(:active, order)
+
+        FileBackup.write(new_state, @backup_file)
+        {:noreply, %{} = new_state}
     end
   end
 
   def handle_info({:nodedown, node_name}, state) do
     IO.puts("NODE DOWN#{node_name}")
 
-    with dead_node_orders <- fetch_node(state, node_name),
-         cab_orders <- fetch_order_type(dead_node_orders, :cab),
-         hall_orders <- fetch_order_type(dead_node_orders, :hall) do
-      reinject_order(hall_orders)
-      updated_state = move_to_standby(state, cab_orders)
-      IO.inspect(updated_state)
-      FileBackup.write(updated_state, @backup_file)
-      {:noreply, updated_state}
-    else
-      _ ->
-        IO.puts("Error in node down")
-        {:noreply, state}
-    end
+    dead_node_orders = fetch_node(state, node_name)
+    cab_orders = fetch_order_type(dead_node_orders, :cab)
+    hall_orders = fetch_order_type(dead_node_orders, :hall)
+
+    reinject_order(hall_orders)
+
+    updated_state =
+      state
+      |> stop_timer(cab_orders)
+      |> stop_timer(hall_orders)
+      |> move_to_standby(cab_orders)
+      |> remove_order(:active, hall_orders)
+
+    FileBackup.write(updated_state, @backup_file)
+    {:noreply, %{} = updated_state}
   end
 
   def handle_info({:nodeup, node_name}, state) do
     standby_orders =
       state
-      |> Map.get(:stand_by)
+      |> Map.get(:standby)
       |> Map.values()
       |> Enum.filter(fn order -> order.node == node_name end)
 
     reinject_order(standby_orders)
-    new_state = remove_order(state, :stand_by, standby_orders)
+    new_state = remove_order(state, :standby, standby_orders)
     FileBackup.write(new_state, @backup_file)
-    {:noreply, new_state}
+    {:noreply, %{} = new_state}
   end
 
   # Helper functions -----------------------------------------------------------
@@ -130,8 +144,7 @@ defmodule WatchDog do
   end
 
   @doc """
-  Edge case when trying to remove an order from the state map when there
-  are no orders in the map.
+  When remoove is called with an empty list of orders to remoove
   """
   def remove_order(state, _order_state, []) do
     state
@@ -140,10 +153,8 @@ defmodule WatchDog do
   @doc """
   Removes multiple orders from the state map.
   """
-  def remove_order(state, order_state, orders)
-      when is_list(orders) do
+  def remove_order(state, order_state, orders) when is_list(orders) do
     Enum.reduce(orders, state, fn order, int_state ->
-      IO.inspect({order, int_state})
       remove_order(int_state, order_state, order)
     end)
   end
@@ -164,27 +175,28 @@ defmodule WatchDog do
     |> Map.get(:active)
     |> Map.values()
     |> Enum.filter(fn order -> order.node == node_name end)
+
+    {:ok, state}
   end
 
   @doc """
   Fetch all cab orders.
   """
   def fetch_order_type(orders, :cab) do
-    Enum.filter(orders, fn order -> order.button_type in @cab_orders end)
+    {:ok, Enum.filter(orders, fn order -> order.button_type in @cab_orders end)}
   end
 
   @doc """
   Fetch all hall orders.
   """
   def fetch_order_type(orders, :hall) do
-    Enum.filter(orders, fn order -> order.button_type in @hall_orders end)
+    {:ok, Enum.filter(orders, fn order -> order.button_type in @hall_orders end)}
   end
 
   @doc """
   Iterates over the orders with reinject_order(%Order{} = order).
   """
-  def reinject_order(orders)
-      when is_list(orders) do
+  def reinject_order(orders) when is_list(orders) do
     Enum.each(orders, fn order -> reinject_order(order) end)
   end
 
@@ -192,7 +204,6 @@ defmodule WatchDog do
   Reinjects the provided order into OrderDistribution.
   """
   def reinject_order(%Order{} = order) do
-    IO.inspect(order)
     OrderDistribution.new_order(order)
   end
 
@@ -207,8 +218,8 @@ defmodule WatchDog do
   end
 
   @doc """
-  Moves the given order to stand_by state in the state map by deleting the order
-  in active state and adding it to the stand_by state. Returns the rebuilt state map.
+  Moves the given order to standby state in the state map by deleting the order
+  in active state and adding it to the standby state. Returns the rebuilt state map.
   """
   def move_to_standby(state, %Order{} = order) do
     new_active =
@@ -218,35 +229,78 @@ defmodule WatchDog do
 
     new_standby =
       state
-      |> Map.get(:stand_by)
+      |> Map.get(:standby)
       |> Map.put(order.id, order)
 
-    IO.inspect(new_active)
-    IO.inspect(new_standby)
-    %{active: new_active, stand_by: new_standby}
+    %{active: new_active, standby: new_standby}
   end
 
   def read_from_backup(filename) do
-    case FileBackup.read(filename) do
-      {:error, :enoent} ->
-        %{active: %{}, stand_by: %{}}
-
-      {:ok, backup_state} ->
-        active =
-          backup_state
-          |> Map.get(:active)
-          |> Map.values()
-          |> Enum.filter(fn order -> Time.diff(Time.utc_now(), order.time) <= 120 end)
-          |> Map.new(fn order -> {order.id, order} end)
-
-        stand_by =
-          backup_state
-          |> Map.get(:stand_by)
-          |> Map.values()
-          |> Enum.filter(fn order -> Time.diff(Time.utc_now(), order.time) <= 10_000 end)
-          |> Map.new(fn order -> {order.id, order} end)
-
-        %{active: active, stand_by: stand_by}
+    with {:ok, backup_state} <- FileBackup.read(filename),
+         {:ok, active} <-
+           filter_recent_orders(backup_state, :active, 120),
+         {:ok, standby} <- filter_recent_orders(backup_state, :standby, 10 * 60),
+         {:ok, timers} <- start_timer(active) do
+      state = %{active: active, standby: standby, timers: timers}
+      FileBackup.write(state, @backup_file)
+      state
+    else
+      _ ->
+        IO.puts("Failed to read from backup")
+        %{active: %{}, standby: %{}, timers: %{}}
     end
+  end
+
+  def filter_recent_orders(state, order_state, time) do
+    new_state =
+      state
+      |> Map.get(order_state)
+      |> Map.values()
+      |> Enum.filter(fn order ->
+        Time.diff(Time.utc_now(), order.time) < time
+      end)
+      |> Map.new(fn order -> {order.id, order} end)
+
+    {:ok, new_state}
+  end
+
+  def start_timer(orders) when is_map(orders) do
+    timers =
+      Enum.reduce(orders, %{}, fn {_id, order}, int_timers -> start_timer(order, int_timers) end)
+
+    {:ok, timers}
+  end
+
+  def start_timer(%Order{time: order_time} = order, timers) when is_map(timers) do
+    time =
+      Time.add(order_time, @watchdog_timer, :millisecond)
+      |> Time.diff(Time.utc_now(), :millisecond)
+
+    if time >= 0 do
+      timer = Process.send_after(self(), {:order_expiered, order.id}, time)
+      Map.put(timers, order.id, timer)
+    else
+      timer = Process.send_after(self(), {:order_expiered, order.id}, 0)
+      Map.put(timers, order.id, timer)
+    end
+  end
+
+  def start_timer(%{} = state, %Order{} = order) do
+    timer = Process.send_after(self(), {:order_expiered, order.id}, @watchdog_timer)
+    put_in(state, [:timers, order.id], timer)
+  end
+
+  def stop_timer(state, orders) when is_list(orders) do
+    Enum.reduce(orders, state, fn order, int_state -> stop_timer(int_state, order) end)
+  end
+
+  def stop_timer(state, %Order{} = order) do
+    {timer, new_state} = pop_in(state, [:timers, order.id])
+
+    if timer != nil do
+      Process.cancel_timer(timer)
+    end
+
+    new_state
   end
 end
