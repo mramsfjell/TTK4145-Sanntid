@@ -346,15 +346,15 @@ defmodule OrderServer do
   end
 
 
-  def delete_outdated_orders(orders) when is_list(orders) do
-    updated_orders =
-      orders
+  def delete_outdated_orders(state) do
+    new_state =
+      state
       |> Map.get(:complete)
       |> Map.values()
       |> Enum.filter(fn order -> Time.diff(Time.utc_now(), order.time) <= 180_000 end)
       |> Map.new(fn order -> {order.id, order} end)
-    send_after(30_000, self, :clean_outdated_orders)
-    Map.put(state, :complete, updated_orders)
+    Process.send_after(self, :clean_outdated_orders, 30_000)
+    Map.put(state, :complete, new_state)
   end
 
 end
