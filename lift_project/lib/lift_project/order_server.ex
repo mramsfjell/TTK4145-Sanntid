@@ -164,6 +164,7 @@ defmodule OrderServer do
     new_state = delete_outdated_orders(state)
     {:noreply, %{} = new_state}
   end
+
   # Order data functions --------------------------------------------------------------
 
   @doc """
@@ -345,16 +346,15 @@ defmodule OrderServer do
     end
   end
 
-
   def delete_outdated_orders(state) do
     new_state =
       state
       |> Map.get(:complete)
       |> Map.values()
-      |> Enum.filter(fn order -> Time.diff(Time.utc_now(), order.time) <= 180_000 end)
+      |> Enum.filter(fn order -> Time.diff(Time.utc_now(), order.time) |> IO.inspect() <= 18 end)
       |> Map.new(fn order -> {order.id, order} end)
-    Process.send_after(self, :clean_outdated_orders, 30_000)
+
+    Process.send_after(self, {:clean_outdated_orders}, 30_000)
     Map.put(state, :complete, new_state)
   end
-
 end
