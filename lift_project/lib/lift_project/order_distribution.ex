@@ -106,9 +106,8 @@ defmodule Auction do
       {{2, :hall_up}, Node.self}
   """
   def assign_watchdog(order, node_list) do
-    watch_dog =
-      ([Node.self() | node_list] -- [order.node])
-      |> Enum.random()
+    watch_node = ([Node.self() | node_list] -- [order.node]) |> Enum.random()
+    Map.put(order, :watch_dog, watch_node)
   end
 
   def assign_watchdog(order, [] = node_list) do
@@ -132,8 +131,6 @@ defmodule Auction do
   def find_lowest_bidder(nodes, order) do
     {bids, _bad_nodes} =
       GenServer.multi_call(nodes, :order_server, {:evaluate_cost, order}, @auction_timeout)
-
-    IO.inspect(bids)
 
     case check_valid_bids(bids) do
       :already_complete ->
@@ -169,12 +166,9 @@ defmodule Auction do
   same order. Broadcasts the result of the auction to the other nodes.
   """
   def post_process_auction(order, winner_node) do
-    IO.puts("Result")
-
     order
     |> Map.put(:node, winner_node)
     |> assign_watchdog(Node.list())
-    |> IO.inspect()
     |> broadcast_result
   end
 
