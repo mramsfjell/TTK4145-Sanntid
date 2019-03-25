@@ -1,5 +1,5 @@
 Implementer:
-Håndter timer meldinger når watchdog dør
+Muligens reinject orders ced oppstart av order server
 Lag initialiserings modul under aplication supervisor
     Oppdater get my ip til supervised task som må fullføres for å starte systemet
 

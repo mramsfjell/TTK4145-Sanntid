@@ -78,6 +78,8 @@ defmodule OrderServer do
           last_order: nil
         }
 
+        Enum.each(active, fn {_id, order} -> set_button_light(order, :on) end)
+        Process.send_after(self, {:clean_outdated_orders}, 30_000)
         {:ok, state}
 
       _other ->
@@ -343,14 +345,14 @@ defmodule OrderServer do
           backup_state
           |> Map.get(:active)
           |> Map.values()
-          |> Enum.filter(fn order -> Time.diff(Time.utc_now(), order.time) <= 120 end)
+          |> Enum.filter(fn order -> Time.diff(Time.utc_now(), order.time) <= 180 end)
           |> Map.new(fn order -> {order.id, order} end)
 
         complete =
           backup_state
           |> Map.get(:complete)
           |> Map.values()
-          |> Enum.filter(fn order -> Time.diff(Time.utc_now(), order.time) <= 1 end)
+          |> Enum.filter(fn order -> Time.diff(Time.utc_now(), order.time) <= 10 * 60 end)
           |> Map.new(fn order -> {order.id, order} end)
 
         {active, complete}
@@ -362,7 +364,9 @@ defmodule OrderServer do
       state
       |> Map.get(:complete)
       |> Map.values()
-      |> Enum.filter(fn order -> Time.diff(Time.utc_now(), order.time) |> IO.inspect() <= 18 end)
+      |> Enum.filter(fn order ->
+        Time.diff(Time.utc_now(), order.time) |> IO.inspect() <= 10 * 60
+      end)
       |> Map.new(fn order -> {order.id, order} end)
 
     Process.send_after(self, {:clean_outdated_orders}, 30_000)
