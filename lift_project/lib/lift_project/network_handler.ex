@@ -50,8 +50,8 @@ defmodule NetworkInitialization do
       IO.puts("Couldn't find my IP")
     end
 
-    {:ok, socket} = :gen_udp.open(6789, active: false, broadcast: true)
-    :ok = :gen_udp.send(socket, {255, 255, 255, 255}, 6789, "Test packet")
+    {:ok, socket} = :gen_udp.open(6199, active: false, broadcast: true)
+    :ok = :gen_udp.send(socket, {255, 255, 255, 255}, 6199, "Test packet")
 
     ip =
       case :gen_udp.recv(socket, 100, 1000) do

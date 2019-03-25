@@ -1,14 +1,15 @@
 defmodule Lift do
   @moduledoc """
   Statemachine for controlling the lift given a lift order.
-  Keeps track of one order at a time.
+  Keeps track of one order at a time, and drives to complete that specific order
   """
   use GenServer
 
   @name :Lift_FSM
   @door_timer 2_000
-  @enforce_keys [:state, :order, :floor, :dir]
-  defstruct [:state, :order, :floor, :dir]
+  @enforce_keys [:state, :order, :floor, :dir,:timer]
+
+  defstruct [:state, :order, :floor, :dir,:timer]
 
   def start_link(args \\ []) do
     GenServer.start_link(__MODULE__, args, name: @name)
@@ -19,7 +20,7 @@ defmodule Lift do
   @doc """
   Message the state machine that the lift has reached a floor.
   """
-  def at_floor(floor) do
+  def at_floor(floor) when is_integer(floor) do
     GenServer.cast(@name, {:at_floor, floor})
   end
 
@@ -31,7 +32,8 @@ defmodule Lift do
   end
 
   @doc """
-  Get the placement of the lift.
+  Get the possition, ie  next floor and current direction of the lift. returns
+  error if the state machine is not initialized
 
   ## Examples
     iex> %Lift{state: :init, order: nil, floor: 0, dir: :up}
@@ -42,8 +44,8 @@ defmodule Lift do
     iex> Lift.get_state()
     {:ok, 1, :up}
   """
-  def get_state() do
-    GenServer.call(@name, :get_state)
+  def get_position() do
+    GenServer.call(@name, :get_position)
   end
 
   # Callbacks -------------------------------------------------------
@@ -62,7 +64,8 @@ defmodule Lift do
             state: :init,
             order: nil,
             floor: nil,
-            dir: :up
+            dir: :up,
+            timer: make_ref()
           }
 
         floor ->
@@ -70,7 +73,8 @@ defmodule Lift do
             state: :idle,
             order: nil,
             floor: floor,
-            dir: :up
+            dir: :up,
+            timer: make_ref()
           }
       end
 
@@ -91,16 +95,17 @@ defmodule Lift do
     {:noreply, %Lift{} = new_data}
   end
 
+  def handle_call(_order_or_get_state, _from, %Lift{state: :init} = data) do
+    {:reply, {:error, :not_ready}, data}
+  end
+
   def handle_cast({:new_order, order}, data) do
     new_data = new_order_event(data, order)
     {:noreply, %Lift{} = new_data}
   end
 
-  def handle_call(:get_state, _from, %Lift{state: :init} = data) do
-    {:reply, {:error, :not_ready}, data}
-  end
 
-  def handle_call(:get_state, _from, data) do
+  def handle_call(:get_position, _from, data) do
     {:reply, {:ok, data.floor, data.dir}, data}
   end
 
@@ -109,9 +114,17 @@ defmodule Lift do
     {:noreply, %Lift{} = new_data}
   end
 
+  def handle_info(:mooving_timer,%Lift{dir: dir,state: :mooving} = data) do
+      Driver.set_motor_direction(dir)
+      new_data = start_timer(state)
+      {:noreply,new_data}
+  end
+
+
   # State transitions ----------------------------------------------------
 
   @doc """
+  Transition always on entry.
   Stops the motor, turns the door light on for a number of seconds specified by
   @door_timer and then tell 'OrderServer' the order has been handled.
 
@@ -133,11 +146,14 @@ defmodule Lift do
   """
   defp mooving_transition(%Lift{dir: dir} = data) do
     Driver.set_door_open_light(:off)
-    new_state = Map.put(data, :state, :mooving)
-    OrderServer.leaving_floor(data.floor, data.dir)
+    new_data =
+        Map.put(data, :state, :mooving)
+        |> start_timer
+    OrderServer.update_lift_position(data.floor, data.dir)
     IO.puts("Mooving #{dir}")
     Driver.set_motor_direction(dir)
-    new_state
+    new_data
+
   end
 
   @doc """
@@ -160,15 +176,14 @@ defmodule Lift do
   defp complete_init(data, floor) do
     Driver.set_motor_direction(:stop)
     OrderServer.lift_ready()
-
-    data
-    |> Map.put(:floor, floor)
-    |> Map.put(:state, :idle)
+    data |> Map.put(:floor, floor)
+    idle_transition(data)
   end
 
   # Events ---------------------------------------------------------------
 
   @doc """
+  Events may trigger state change.
   Turns off the door light and tell 'OrderServer' the given order is complete.
 
   The data struct is updated with :order set to nil.
@@ -181,7 +196,7 @@ defmodule Lift do
   end
 
   @doc """
-  
+
   """
   defp new_order_event(%Lift{state: :idle} = data, %Order{} = order) do
     if Order.order_at_floor?(order, data.floor) do
@@ -197,33 +212,35 @@ defmodule Lift do
   end
 
   @doc """
-  
+
   """
   defp new_order_event(
          %Lift{floor: current_floor, dir: :up} = data,
          %Order{floor: target_floor} = order
        )
        when current_floor <= target_floor do
+
     add_order(data, order)
   end
 
   @doc """
-  
+
   """
   defp new_order_event(
          %Lift{floor: current_floor, dir: :down} = data,
          %Order{floor: target_floor} = order
        )
        when current_floor >= target_floor do
+
     add_order(data, order)
   end
 
   @doc """
-  
-  """
-  defp at_floor_event(%Lift{floor: floor, order: order} = data) do
-    IO.puts("at floor#{floor}")
 
+  """
+  defp at_floor_event(%Lift{floor: floor, order: order, timer: timer} = data) do
+    IO.puts("at floor#{floor}")
+    Process.cancel_timer(timer)
     case Order.order_at_floor?(order, floor) do
       true -> door_open_transition(data)
       false -> mooving_transition(data)
@@ -231,7 +248,7 @@ defmodule Lift do
   end
 
   @doc """
-  
+
   """
   defp at_floor_event(data, floor) do
     data
@@ -258,5 +275,12 @@ defmodule Lift do
     else
       Map.put(data, :dir, :down)
     end
+  end
+
+
+  def start_timer(data) do
+      Process.cancel_timer(timer)
+      timer = Process.send_after(self(),:mooving_timer,3_000)
+      new_data = Map.put(data,:timer,timer)
   end
 end
