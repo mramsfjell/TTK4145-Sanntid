@@ -1,5 +1,5 @@
 # LiftProject
-Our lift project is written in Elixir, a functional programming language. The authors are Thorbjørn Fuglestad, Ole-Jørgen Hannestad and Simen Krantz Knudsen.
+Our lift project is written in Elixir, a functional programming language. The authors are Torbjørn Fuglestad, Ole-Jørgen Hannestad and Simen Krantz Knudsen.
 
 For the extensive specifications for the project, see the [course project site](https://github.com/TTK4145/Project).
 
