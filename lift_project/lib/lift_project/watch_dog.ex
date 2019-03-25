@@ -101,9 +101,9 @@ defmodule WatchDog do
   def handle_info({:nodedown, node_name}, state) do
     IO.puts("NODE DOWN#{node_name}")
 
-    dead_node_orders = fetch_node(state, node_name)
-    cab_orders = fetch_order_type(dead_node_orders, :cab)
-    hall_orders = fetch_order_type(dead_node_orders, :hall)
+    {:ok, dead_node_orders} = fetch_node(state, node_name)
+    {:ok, cab_orders} = fetch_order_type(dead_node_orders, :cab)
+    {:ok, hall_orders} = fetch_order_type(dead_node_orders, :hall)
 
     reinject_order(hall_orders)
 
@@ -168,12 +168,13 @@ defmodule WatchDog do
   Fetches the node affiliated with the node_name's order.
   """
   def fetch_node(state, node_name) do
-    state
-    |> Map.get(:active)
-    |> Map.values()
-    |> Enum.filter(fn order -> order.node == node_name end)
+    node_orders =
+      state
+      |> Map.get(:active)
+      |> Map.values()
+      |> Enum.filter(fn order -> order.node == node_name end)
 
-    {:ok, state}
+    {:ok, node_orders}
   end
 
   @doc """
@@ -229,7 +230,10 @@ defmodule WatchDog do
       |> Map.get(:standby)
       |> Map.put(order.id, order)
 
-    %{active: new_active, standby: new_standby}
+    new_state =
+      state
+      |> Map.put(:active, new_active)
+      |> Map.put(:standby, new_standby)
   end
 
   def read_from_backup(filename) do
