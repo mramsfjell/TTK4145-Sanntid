@@ -24,6 +24,7 @@ defmodule NetworkInitialization do
   """
 
   @doc """
+  Credited: Jostein Løwer. https://github.com/jostlowe/kokeplata/tree/master/lib (24.03.19)
   Boots a node with a specified tick time. node_name sets the node name before @.
   The IP-address is automatically imported.
       iex> NetworkInitialization.boot_node "n1"
@@ -39,6 +40,7 @@ defmodule NetworkInitialization do
 
 
   @doc """
+  Credited: Jostein Løwer. https://github.com/jostlowe/kokeplata/tree/master/lib (24.03.19)
   Returns the ip address of our network interface.
   ## Examples
       iex> NetworkInitialization.get_my_ip
@@ -63,6 +65,9 @@ defmodule NetworkInitialization do
     ip
   end
 
+@doc """
+Credited: Jostein Løwer. https://github.com/jostlowe/kokeplata/tree/master/lib (24.03.19)
+"""
   def ip_to_string(ip) do
     :inet.ntoa(ip) |> to_string()
   end
