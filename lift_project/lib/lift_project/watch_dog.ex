@@ -8,9 +8,6 @@ defmodule WatchDog do
   this order is reinjected to the system by the order distribution logic.
   If everything works as expected, the process is killed when the order_complete
   message is received.
-
-  Use GenServer whith list of all assigned orders. Use process.send_after to
-  take care of expired timers. Also handle Node down/up
   """
 
   use GenServer
