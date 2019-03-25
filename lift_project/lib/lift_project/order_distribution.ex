@@ -77,7 +77,7 @@ defmodule Auction do
   """
   def execute_auction(%{button_type: :cab} = order) do
     IO.puts("Cab auction")
-    IO.inspect(order)
+    IO.inspect(order, label: "order in for auction execution")
     find_lowest_bidder([order.node], order)
   end
 
@@ -131,6 +131,7 @@ defmodule Auction do
   def find_lowest_bidder(nodes, order) do
     {bids, _bad_nodes} =
       GenServer.multi_call(nodes, :order_server, {:evaluate_cost, order}, @auction_timeout)
+      |> IO.inspect(label: "bids")
 
     case check_valid_bids(bids) do
       :already_complete ->
@@ -177,7 +178,7 @@ defmodule Auction do
   """
   def broadcast_result(order) do
     GenServer.multi_call(
-      [Node.self(), Node.list()],
+      [Node.self() | Node.list()],
       :order_server,
       {:new_order, order},
       @auction_timeout

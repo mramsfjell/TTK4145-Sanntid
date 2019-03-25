@@ -128,7 +128,11 @@ defmodule OrderServer do
       if order_in_complete?(state, order) do
         {:completed, 0}
       else
-        active_orders = Map.values(state.active)
+        active_orders =
+          state
+          |> Map.get(:active)
+          |> filter_node(Node.self())
+
         cost = OrderServer.Cost.calculate_cost(active_orders, state.floor, state.dir, order)
         {:ok, cost}
       end
@@ -218,7 +222,8 @@ defmodule OrderServer do
     true
   """
   def order_in_complete?(state, order) do
-    Enum.any?(state.complete, fn {id, _complete_order} -> id == order.id end) |> IO.inspect()
+    Enum.any?(state.complete, fn {id, _complete_order} -> id == order.id end)
+    |> IO.inspect(label: "order_in _complete?")
   end
 
   @doc """
@@ -232,6 +237,12 @@ defmodule OrderServer do
     |> Map.values()
     |> Enum.filter(fn order -> order.node == node_name end)
     |> Enum.filter(fn order -> Order.order_at_floor?(order, floor, order_dir) end)
+  end
+
+  def filter_node(orders, node_name) do
+    orders
+    |> Map.values()
+    |> Enum.filter(fn order -> order.node == node_name end)
   end
 
   @doc """
