@@ -1,9 +1,8 @@
 Implementer:
-Hva skjer med send after når prosess dør
+Håndter timer meldinger når watchdog dør
 Lag initialiserings modul under aplication supervisor
     Oppdater get my ip til supervised task som må fullføres for å starte systemet
 
-Sikkerhet hvis heisen bruker for lang tid mellom etasjer
 
 Test:
 Legg inn sjekk på utdaterte ordre i OrderServer

@@ -95,7 +95,7 @@ defmodule Lift do
     {:noreply, %Lift{} = new_data}
   end
 
-  def handle_call(_order_or_get_state, _from, %Lift{state: :init} = data) do
+  def handle_call(:new_order, _from, %Lift{state: :init} = data) do
     {:reply, {:error, :not_ready}, data}
   end
 
@@ -104,7 +104,9 @@ defmodule Lift do
     {:noreply, %Lift{} = new_data}
   end
 
-
+  def handle_call(:get_position, _from, %Lift{state: :init} = data) do
+    {:reply, {:error, :not_ready}, data}
+  end
   def handle_call(:get_position, _from, data) do
     {:reply, {:ok, data.floor, data.dir}, data}
   end
@@ -116,7 +118,8 @@ defmodule Lift do
 
   def handle_info(:mooving_timer,%Lift{dir: dir,state: :mooving} = data) do
       Driver.set_motor_direction(dir)
-      new_data = start_timer(state)
+      new_data = start_timer(data)
+      IO.puts "Timer ran out"
       {:noreply,new_data}
   end
 
@@ -176,8 +179,8 @@ defmodule Lift do
   defp complete_init(data, floor) do
     Driver.set_motor_direction(:stop)
     OrderServer.lift_ready()
-    data |> Map.put(:floor, floor)
-    idle_transition(data)
+    new_data = Map.put(data,:floor, floor)
+    idle_transition(new_data)
   end
 
   # Events ---------------------------------------------------------------
@@ -278,7 +281,7 @@ defmodule Lift do
   end
 
 
-  def start_timer(data) do
+  def start_timer(%Lift{timer: timer} = data) do
       Process.cancel_timer(timer)
       timer = Process.send_after(self(),:mooving_timer,3_000)
       new_data = Map.put(data,:timer,timer)

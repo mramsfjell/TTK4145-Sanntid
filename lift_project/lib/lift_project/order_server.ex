@@ -23,7 +23,7 @@ defmodule OrderServer do
   Casts that the lift is leaving a floor. The next floor is calculated, given the direction,
   and the new state is updated with the new floor and the given direction.
   """
-  def updated_lift_position(floor, dir) do
+  def update_lift_position(floor, dir) do
     GenServer.cast(@name, {:lift_leaving_floor, floor, dir})
   end
 
