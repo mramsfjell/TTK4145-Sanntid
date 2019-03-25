@@ -23,7 +23,7 @@ defmodule OrderServer do
   Casts that the lift is leaving a floor. The next floor is calculated, given the direction,
   and the new state is updated with the new floor and the given direction.
   """
-  def leaving_floor(floor, dir) do
+  def updated_lift_position(floor, dir) do
     GenServer.cast(@name, {:lift_leaving_floor, floor, dir})
   end
 
@@ -66,7 +66,7 @@ defmodule OrderServer do
   # Callbacks -------------------------------------------------------------------
 
   def init([]) do
-    case Lift.get_state() do
+    case Lift.get_position() do
       {:ok, floor, dir} ->
         {active, complete} = read_from_backup(@backup_file)
 
@@ -160,6 +160,10 @@ defmodule OrderServer do
     {:noreply, %{} = new_state}
   end
 
+  def handle_info({:clean_outdated_orders}, state) do
+    new_state = delete_outdated_orders(state)
+    {:noreply, %{} = new_state}
+  end
   # Order data functions --------------------------------------------------------------
 
   @doc """
@@ -340,4 +344,17 @@ defmodule OrderServer do
         {active, complete}
     end
   end
+
+
+  def delete_outdated_orders(orders) when is_list(orders) do
+    updated_orders =
+      orders
+      |> Map.get(:complete)
+      |> Map.values()
+      |> Enum.filter(fn order -> Time.diff(Time.utc_now(), order.time) <= 180_000 end)
+      |> Map.new(fn order -> {order.id, order} end)
+    send_after(30_000, self, :clean_outdated_orders)
+    Map.put(state, :complete, updated_orders)
+  end
+
 end

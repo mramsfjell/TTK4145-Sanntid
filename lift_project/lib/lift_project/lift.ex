@@ -137,6 +137,7 @@ defmodule Lift do
     OrderServer.leaving_floor(data.floor, data.dir)
     IO.puts("Mooving #{dir}")
     Driver.set_motor_direction(dir)
+
     new_state
   end
 
@@ -181,7 +182,7 @@ defmodule Lift do
   end
 
   @doc """
-  
+
   """
   defp new_order_event(%Lift{state: :idle} = data, %Order{} = order) do
     if Order.order_at_floor?(order, data.floor) do
@@ -197,7 +198,7 @@ defmodule Lift do
   end
 
   @doc """
-  
+
   """
   defp new_order_event(
          %Lift{floor: current_floor, dir: :up} = data,
@@ -208,7 +209,7 @@ defmodule Lift do
   end
 
   @doc """
-  
+
   """
   defp new_order_event(
          %Lift{floor: current_floor, dir: :down} = data,
@@ -219,7 +220,7 @@ defmodule Lift do
   end
 
   @doc """
-  
+
   """
   defp at_floor_event(%Lift{floor: floor, order: order} = data) do
     IO.puts("at floor#{floor}")
@@ -231,7 +232,7 @@ defmodule Lift do
   end
 
   @doc """
-  
+
   """
   defp at_floor_event(data, floor) do
     data
