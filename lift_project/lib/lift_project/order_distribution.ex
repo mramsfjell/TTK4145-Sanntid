@@ -38,6 +38,7 @@ defmodule OrderDistribution do
 
   def handle_cast({:new_order, order}, state) do
     {:ok, auction} = Auction.Supervisor.start_child(order)
+    Task.await(auction)
     {:noreply, state}
   end
 end
@@ -93,7 +94,7 @@ defmodule Auction do
   Assigns itself as its own watchdog for the specified order when no other nodes
   are present in the network.
   """
-  def assign_watchdog(order, [] = node_list) do
+  def assign_watchdog(order, []) do
     Map.put(order, :watch_dog, Node.self())
   end
 
@@ -105,14 +106,6 @@ defmodule Auction do
       iex > assign_watchdog(order, node_list)
       {{2, :hall_up}, Node.self}
   """
-  def assign_watchdog(order, node_list) do
-    watch_node = ([Node.self() | node_list] -- [order.node]) |> Enum.random()
-    Map.put(order, :watch_dog, watch_node)
-  end
-
-  def assign_watchdog(order, [] = node_list) do
-    Map.put(order, :watch_dog, Node.self())
-  end
 
   def assign_watchdog(order, node_list) do
     watch_dog =
@@ -158,8 +151,8 @@ defmodule Auction do
   Extracts the node with lowest cost from a list of bids.
   """
   def filter_lowest_bidder(bids) do
-    {winner_node, min_bids} =
-      Enum.min_by(bids, fn {node_name, cost} -> cost end, fn -> {Node.self(), 0} end)
+    {winner_node, min_bid} =
+      Enum.min_by(bids, fn {_node_name, cost} -> cost end, fn -> {Node.self(), 0} end)
   end
 
   @doc """

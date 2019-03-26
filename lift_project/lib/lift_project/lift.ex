@@ -12,9 +12,9 @@ defmodule Lift do
   @name :Lift_FSM
   @door_timer 2_000
   @mooving_timer 3_000
-  @enforce_keys [:state, :order, :floor, :dir,:timer]
+  @enforce_keys [:state, :order, :floor, :dir, :timer]
 
-  defstruct [:state, :order, :floor, :dir,:timer]
+  defstruct [:state, :order, :floor, :dir, :timer]
 
   def start_link(args \\ []) do
     GenServer.start_link(__MODULE__, args, name: @name)
@@ -86,7 +86,7 @@ defmodule Lift do
     {:ok, data}
   end
 
-  def terminate(_reason, state) do
+  def terminate(_reason, _state) do
     Driver.set_motor_direction(:stop)
   end
 
@@ -100,7 +100,7 @@ defmodule Lift do
     {:noreply, %Lift{} = new_data}
   end
 
-  def handle_call(:new_order, _from, %Lift{state: :init} = data) do
+  def handle_cast({:new_order, _order}, %Lift{state: :init} = data) do
     {:reply, {:error, :not_ready}, data}
   end
 
@@ -112,6 +112,7 @@ defmodule Lift do
   def handle_call(:get_position, _from, %Lift{state: :init} = data) do
     {:reply, {:error, :not_ready}, data}
   end
+
   def handle_call(:get_position, _from, data) do
     {:reply, {:ok, data.floor, data.dir}, data}
   end
@@ -121,13 +122,12 @@ defmodule Lift do
     {:noreply, %Lift{} = new_data}
   end
 
-  def handle_info(:mooving_timer,%Lift{dir: dir,state: :mooving} = data) do
-      Driver.set_motor_direction(dir)
-      new_data = start_timer(data)
-      IO.puts "Timer ran out"
-      {:noreply,new_data}
+  def handle_info(:mooving_timer, %Lift{dir: dir, state: :mooving} = data) do
+    Driver.set_motor_direction(dir)
+    new_data = start_timer(data)
+    IO.puts("Timer ran out")
+    {:noreply, new_data}
   end
-
 
   # State transitions -------------------------------------------------------------
 
@@ -155,14 +155,15 @@ defmodule Lift do
   """
   defp mooving_transition(%Lift{dir: dir} = data) do
     Driver.set_door_open_light(:off)
+
     new_data =
-        Map.put(data, :state, :mooving)
-        |> start_timer
+      Map.put(data, :state, :mooving)
+      |> start_timer
+
     OrderServer.update_lift_position(data.floor, data.dir)
     IO.puts("Mooving #{dir}")
     Driver.set_motor_direction(dir)
     new_data
-
   end
 
   @doc """
@@ -188,7 +189,7 @@ defmodule Lift do
   defp complete_init(data, floor) do
     Driver.set_motor_direction(:stop)
     OrderServer.lift_ready()
-    new_data = Map.put(data,:floor, floor)
+    new_data = Map.put(data, :floor, floor)
     idle_transition(new_data)
   end
 
@@ -200,7 +201,7 @@ defmodule Lift do
 
   The data struct is updated with :order set to nil.
   """
-  defp door_close_event(%Lift{order: order, floor: floor, dir: dir} = data) do
+  defp door_close_event(%Lift{order: order, dir: dir} = data) do
     Driver.set_door_open_light(:off)
     OrderServer.order_complete(order)
     data = Map.put(data, :order, nil)
@@ -236,7 +237,6 @@ defmodule Lift do
          %Order{floor: target_floor} = order
        )
        when current_floor <= target_floor do
-
     add_order(data, order)
   end
 
@@ -251,7 +251,6 @@ defmodule Lift do
          %Order{floor: target_floor} = order
        )
        when current_floor >= target_floor do
-
     add_order(data, order)
   end
 
@@ -262,6 +261,7 @@ defmodule Lift do
   defp at_floor_event(%Lift{floor: floor, order: order, timer: timer} = data) do
     IO.puts("at floor#{floor}")
     Process.cancel_timer(timer)
+
     case Order.order_at_floor?(order, floor) do
       true -> door_open_transition(data)
       false -> mooving_transition(data)
@@ -305,8 +305,8 @@ defmodule Lift do
   Only one timer per lift cab can run at any given time.
   """
   def start_timer(%Lift{timer: timer} = data) do
-      Process.cancel_timer(timer)
-      timer = Process.send_after(self(),:mooving_timer,@mooving_timer)
-      new_data = Map.put(data,:timer,timer)
+    Process.cancel_timer(timer)
+    timer = Process.send_after(self(), :mooving_timer, @mooving_timer)
+    new_data = Map.put(data, :timer, timer)
   end
 end

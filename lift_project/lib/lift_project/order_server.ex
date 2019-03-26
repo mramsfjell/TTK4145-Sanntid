@@ -6,9 +6,6 @@ defmodule OrderServer do
   """
   use GenServer
 
-  @valid_dir [:up, :down]
-  @up_dir [:cab, :hall_up]
-  @down_dir [:cab, :hall_down]
   @name :order_server
   @direction_map %{up: 1, down: -1}
   @backup_file "order_server_backup.txt"
@@ -79,7 +76,8 @@ defmodule OrderServer do
         }
 
         Enum.each(active, fn {_id, order} -> set_button_light(order, :on) end)
-        Process.send_after(self, {:clean_outdated_orders}, 30_000)
+        FileBackup.write(state, @backup_file)
+        Process.send_after(self(), {:clean_outdated_orders}, 30_000)
         {:ok, state}
 
       _other ->
@@ -206,9 +204,9 @@ defmodule OrderServer do
     iex> OrderServer.remove_order(state,order)
     %{active: %{}, complete: %{order.id => order}}
   """
-  def remove_order(state, %Order{id: id} = order) do
+  def remove_order(state, %Order{} = order) do
     {_complete_order, new_state} = pop_in(state, [:active, order.id])
-    new_state = put_in(new_state, [:complete, order.id], order)
+    put_in(new_state, [:complete, order.id], order)
   end
 
   @doc """
@@ -337,7 +335,7 @@ defmodule OrderServer do
 
   def read_from_backup(filename) do
     case FileBackup.read(filename) do
-      {:error, :enoent} ->
+      {:error, _reason} ->
         {%{}, %{}}
 
       {:ok, backup_state} ->
@@ -345,14 +343,14 @@ defmodule OrderServer do
           backup_state
           |> Map.get(:active)
           |> Map.values()
-          |> Enum.filter(fn order -> Time.diff(Time.utc_now(), order.time) <= 180 end)
+          |> Enum.filter(fn order -> abs(Time.diff(Time.utc_now(), order.time)) <= 180 end)
           |> Map.new(fn order -> {order.id, order} end)
 
         complete =
           backup_state
           |> Map.get(:complete)
           |> Map.values()
-          |> Enum.filter(fn order -> Time.diff(Time.utc_now(), order.time) <= 10 * 60 end)
+          |> Enum.filter(fn order -> abs(Time.diff(Time.utc_now(), order.time)) <= 10 * 60 end)
           |> Map.new(fn order -> {order.id, order} end)
 
         {active, complete}
@@ -364,12 +362,10 @@ defmodule OrderServer do
       state
       |> Map.get(:complete)
       |> Map.values()
-      |> Enum.filter(fn order ->
-        Time.diff(Time.utc_now(), order.time) |> IO.inspect() <= 10 * 60
-      end)
+      |> Enum.filter(fn order -> abs(Time.diff(Time.utc_now(), order.time)) <= 10 * 60 end)
       |> Map.new(fn order -> {order.id, order} end)
 
-    Process.send_after(self, {:clean_outdated_orders}, 30_000)
+    Process.send_after(self(), {:clean_outdated_orders}, 30_000)
     Map.put(state, :complete, new_state)
   end
 end

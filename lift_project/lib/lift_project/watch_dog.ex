@@ -230,10 +230,9 @@ defmodule WatchDog do
       |> Map.get(:standby)
       |> Map.put(order.id, order)
 
-    new_state =
-      state
-      |> Map.put(:active, new_active)
-      |> Map.put(:standby, new_standby)
+    state
+    |> Map.put(:active, new_active)
+    |> Map.put(:standby, new_standby)
   end
 
   def read_from_backup(filename) do
