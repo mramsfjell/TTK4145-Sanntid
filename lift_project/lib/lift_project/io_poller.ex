@@ -121,7 +121,7 @@ defmodule ButtonPoller do
   """
 
   def poller(floor, button_type, :released) do
-    :timer.sleep(100)
+    Process.sleep(200)
 
     case Driver.get_order_button_state(floor, button_type) do
       0 ->
@@ -142,7 +142,7 @@ defmodule ButtonPoller do
   end
 
   def poller(floor, button_type, :pushed) do
-    :timer.sleep(200)
+    Process.sleep(200)
     # testvar = Driver.get_order_button_state(floor,button_type)
     # IO.inspect(testvar)
     case Driver.get_order_button_state(floor, button_type) do
@@ -184,7 +184,7 @@ defmodule FloorPoller do
   """
 
   def poller(:idle) do
-    :timer.sleep(200)
+    Process.sleep(200)
 
     case Driver.get_floor_sensor_state() do
       :between_floors ->
@@ -196,7 +196,7 @@ defmodule FloorPoller do
   end
 
   def poller(:between_floors) do
-    :timer.sleep(200)
+    Process.sleep(100)
     poller(Driver.get_floor_sensor_state())
   end
 

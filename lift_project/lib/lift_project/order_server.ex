@@ -134,6 +134,7 @@ defmodule OrderServer do
           |> filter_node(Node.self())
 
         cost = OrderServer.Cost.calculate_cost(active_orders, state.floor, state.dir, order)
+        IO.inspect(cost, label: "Cost evaluated to")
         {:ok, cost}
       end
 
@@ -160,7 +161,7 @@ defmodule OrderServer do
     new_state = remove_order(state, order)
     set_button_light(order, :off)
     WatchDog.order_complete(order)
-    # FileBackup.write(state, @backup_file)
+    FileBackup.write(new_state, @backup_file)
     {:noreply, %{} = new_state}
   end
 
@@ -344,6 +345,7 @@ defmodule OrderServer do
           |> Map.get(:active)
           |> Map.values()
           |> Enum.filter(fn order -> abs(Time.diff(Time.utc_now(), order.time)) <= 180 end)
+          |> Enum.filter(fn order -> order.node == Node.self() end)
           |> Map.new(fn order -> {order.id, order} end)
 
         complete =

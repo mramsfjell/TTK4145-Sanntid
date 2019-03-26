@@ -37,8 +37,7 @@ defmodule OrderDistribution do
   end
 
   def handle_cast({:new_order, order}, state) do
-    {:ok, auction} = Auction.Supervisor.start_child(order)
-    Task.await(auction)
+    {:ok, _auction} = Auction.Supervisor.start_child(order)
     {:noreply, state}
   end
 end
@@ -78,7 +77,6 @@ defmodule Auction do
   """
   def execute_auction(%{button_type: :cab} = order) do
     IO.puts("Cab auction")
-    IO.inspect(order, label: "order in for auction execution")
     find_lowest_bidder([order.node], order)
   end
 
@@ -95,7 +93,7 @@ defmodule Auction do
   are present in the network.
   """
   def assign_watchdog(order, []) do
-    Map.put(order, :watch_dog, Node.self())
+    Map.put(order, :watch_dog, order.node)
   end
 
   @doc """
@@ -122,6 +120,8 @@ defmodule Auction do
   """
 
   def find_lowest_bidder(nodes, order) do
+    IO.inspect(order, label: "Order on auction")
+
     {bids, _bad_nodes} =
       GenServer.multi_call(nodes, :order_server, {:evaluate_cost, order}, @auction_timeout)
       |> IO.inspect(label: "bids")
@@ -140,7 +140,7 @@ defmodule Auction do
   Checks if none of the specified bids says they have completed the order that
   the bids are for.
   """
-  def check_valid_bids(bids) do
+  def check_valid_bids(bids) when length(bids) > 0 do
     case(Enum.any?(bids, fn {_node, reply} -> {:completed, 0} == reply end)) do
       true -> :already_complete
       false -> :valid

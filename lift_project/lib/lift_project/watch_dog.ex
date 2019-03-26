@@ -1,4 +1,6 @@
 defmodule WatchDog do
+  require Logger
+
   @moduledoc """
   This module is meant to take care of any order not being handled within
   reasonable time, set by the timer length @watchdog_timer.
@@ -202,6 +204,7 @@ defmodule WatchDog do
   Reinjects the provided order into OrderDistribution.
   """
   def reinject_order(%Order{} = order) do
+    Logger.debug("Reinjecting #{inspect(order)}")
     OrderDistribution.new_order(order)
   end
 
@@ -284,6 +287,10 @@ defmodule WatchDog do
       Map.put(timers, order.id, timer)
     end
   end
+
+  @doc """
+  Start a new timer
+  """
 
   def start_timer(%{} = state, %Order{} = order) do
     timer = Process.send_after(self(), {:order_expiered, order.id}, @watchdog_timer)
