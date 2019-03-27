@@ -1,12 +1,8 @@
 Implementer:
-Muligens reinject orders ved oppstart av order server
 Lag initialiserings modul under aplication supervisor
     Oppdater get my ip til supervised task som må fullføres for å starte systemet
-Utadterte ordre i orderserver
-Opp timeout for node down
-Juster ned watchdog til 20
-Node down problem ved høgt pakke tap
-tune timeout på node droppes fra
+
+tune timeout på node droppes fra cluster
 
 Test:
 Mer generell testing
