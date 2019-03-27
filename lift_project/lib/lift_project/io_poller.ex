@@ -169,7 +169,7 @@ defmodule FloorPoller do
   use Task
 
   def start_link() do
-    Task.start_link(__MODULE__, :poller, [:idle])
+    Task.start_link(__MODULE__, :poller, [:between_floors])
   end
 
   def child_spec([id]) do

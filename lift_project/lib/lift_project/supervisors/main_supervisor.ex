@@ -15,7 +15,6 @@ defmodule Liftproject.Supervisor do
     ]
 
     opts = [strategy: :one_for_one]
-    NetworkInitialization.boot_node("n", 1_000)
     Supervisor.init(children, opts)
   end
 end

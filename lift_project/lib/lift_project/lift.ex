@@ -74,6 +74,7 @@ defmodule Lift do
           }
 
         floor ->
+          data =
           %Lift{
             state: :idle,
             order: nil,
@@ -81,6 +82,7 @@ defmodule Lift do
             dir: :up,
             timer: make_ref()
           }
+          complete_init(data,floor)
       end
 
     {:ok, data}
@@ -126,6 +128,10 @@ defmodule Lift do
     Driver.set_motor_direction(dir)
     new_data = start_timer(data)
     IO.puts("Timer ran out")
+    pid = Process.whereis(:order_server)
+    Process.exit(pid, :kill)
+    Process.exit(self, :normal)
+
     {:noreply, new_data}
   end
 
@@ -190,6 +196,7 @@ defmodule Lift do
     Driver.set_motor_direction(:stop)
     OrderServer.lift_ready()
     new_data = Map.put(data, :floor, floor)
+    NetworkInitialization.boot_node("n", 10_000)
     idle_transition(new_data)
   end
 
