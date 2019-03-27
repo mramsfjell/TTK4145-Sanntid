@@ -57,33 +57,16 @@ defmodule Lift do
 
   def init([]) do
     Driver.set_door_open_light(:off)
-    Driver.set_motor_direction(:stop)
-    Process.sleep(500)
+    Driver.set_motor_direction(:up)
+    # Process.sleep(500)
 
-    data =
-      case Driver.get_floor_sensor_state() do
-        :between_floors ->
-          Driver.set_motor_direction(:up)
-
-          %Lift{
-            state: :init,
-            order: nil,
-            floor: nil,
-            dir: :up,
-            timer: make_ref()
-          }
-
-        floor ->
-          data =
-          %Lift{
-            state: :idle,
-            order: nil,
-            floor: floor,
-            dir: :up,
-            timer: make_ref()
-          }
-          complete_init(data,floor)
-      end
+    data = %Lift{
+      state: :init,
+      order: nil,
+      floor: nil,
+      dir: :up,
+      timer: make_ref()
+    }
 
     {:ok, data}
   end
@@ -92,13 +75,15 @@ defmodule Lift do
     Driver.set_motor_direction(:stop)
   end
 
-  def handle_cast({:at_floor, floor}, data) do
-    new_data =
-      case data.state do
-        :mooving -> at_floor_event(data, floor)
-        :init -> complete_init(data, floor)
-      end
+  def handle_cast({:at_floor, floor}, %Lift{state: :init} = data) do
+    IO.inspect(data, label: "init at floor")
+    new_data = complete_init(data, floor)
+    {:noreply, %Lift{} = new_data}
+  end
 
+  def handle_cast({:at_floor, floor}, %Lift{state: _state} = data) do
+    IO.inspect(data, label: "at floor")
+    new_data = at_floor_event(data, floor)
     {:noreply, %Lift{} = new_data}
   end
 
