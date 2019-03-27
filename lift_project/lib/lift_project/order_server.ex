@@ -68,14 +68,14 @@ defmodule OrderServer do
         {active, complete} = read_from_backup(@backup_file)
 
         state = %{
-          active: active,
+          active: %{},
           complete: complete,
           floor: floor,
           dir: dir,
           last_order: nil
         }
 
-        Enum.each(active, fn {_id, order} -> set_button_light(order, :on) end)
+        Enum.each(active, fn {_id, order} -> OrderDistribution.new_order(order) end)
         FileBackup.write(state, @backup_file)
         Process.send_after(self(), {:clean_outdated_orders}, 30_000)
         {:ok, state}
@@ -98,7 +98,6 @@ defmodule OrderServer do
   end
 
   def handle_cast({:order_complete, order}, state) do
-    IO.inspect(order, label: "complete order")
     orders = fetch_orders(state.active, Node.self(), order.floor, order.button_type, state.dir)
 
     new_state =
@@ -134,7 +133,6 @@ defmodule OrderServer do
           |> filter_node(Node.self())
 
         cost = OrderServer.Cost.calculate_cost(active_orders, state.floor, state.dir, order)
-        IO.inspect(cost, label: "Cost evaluated to")
         {:ok, cost}
       end
 
@@ -166,7 +164,10 @@ defmodule OrderServer do
   end
 
   def handle_info({:clean_outdated_orders}, state) do
-    new_state = delete_outdated_orders(state)
+    {_orders, new_state} = pop_outdated_orders(state, :complete, 600)
+    {orders, new_state} = pop_outdated_orders(new_state, :active, 120)
+    Enum.each(orders, fn order -> OrderDistribution.new_order(order) end)
+    Process.send_after(self(), {:clean_outdated_orders}, 30_000)
     {:noreply, %{} = new_state}
   end
 
@@ -224,7 +225,6 @@ defmodule OrderServer do
   """
   def order_in_complete?(state, order) do
     Enum.any?(state.complete, fn {id, _complete_order} -> id == order.id end)
-    |> IO.inspect(label: "order_in _complete?")
   end
 
   @doc """
@@ -273,7 +273,10 @@ defmodule OrderServer do
   """
   def assign_new_lift_order(%{floor: floor, dir: dir} = state) do
     active_orders =
-      Map.values(state.active) |> Enum.filter(fn order -> order.node == Node.self() end)
+      state
+      |> Map.get(:active)
+      |> Map.values()
+      |> Enum.filter(fn order -> order.node == Node.self() end)
 
     case OrderServer.Cost.next_order(active_orders, floor, dir) do
       nil ->
@@ -340,34 +343,35 @@ defmodule OrderServer do
         {%{}, %{}}
 
       {:ok, backup_state} ->
-        active =
-          backup_state
-          |> Map.get(:active)
-          |> Map.values()
-          |> Enum.filter(fn order -> abs(Time.diff(Time.utc_now(), order.time)) <= 180 end)
-          |> Enum.filter(fn order -> order.node == Node.self() end)
-          |> Map.new(fn order -> {order.id, order} end)
-
-        complete =
-          backup_state
-          |> Map.get(:complete)
-          |> Map.values()
-          |> Enum.filter(fn order -> abs(Time.diff(Time.utc_now(), order.time)) <= 10 * 60 end)
-          |> Map.new(fn order -> {order.id, order} end)
-
+        active = filter_backup(backup_state, :active, 180)
+        complete = filter_backup(backup_state, :complete, 600)
         {active, complete}
     end
   end
 
-  def delete_outdated_orders(state) do
-    new_state =
+  def filter_backup(backup_state, order_state, time_limit) do
+    backup_state
+    |> Map.get(order_state)
+    |> Map.values()
+    |> Enum.filter(fn order -> abs(Time.diff(Time.utc_now(), order.time)) <= time_limit end)
+    |> Map.new(fn order -> {order.id, order} end)
+  end
+
+  def pop_outdated_orders(state, order_type, time) do
+    outdated_orders =
       state
-      |> Map.get(:complete)
+      |> Map.get(order_type)
       |> Map.values()
-      |> Enum.filter(fn order -> abs(Time.diff(Time.utc_now(), order.time)) <= 10 * 60 end)
+      |> Enum.filter(fn order -> abs(Time.diff(Time.utc_now(), order.time)) >= time end)
+
+    valid_orders =
+      state
+      |> Map.get(order_type)
+      |> Map.values()
+      |> Enum.filter(fn order -> abs(Time.diff(Time.utc_now(), order.time)) < time end)
       |> Map.new(fn order -> {order.id, order} end)
 
-    Process.send_after(self(), {:clean_outdated_orders}, 30_000)
-    Map.put(state, :complete, new_state)
+    new_state = Map.put(state, order_type, valid_orders)
+    {outdated_orders, new_state}
   end
 end

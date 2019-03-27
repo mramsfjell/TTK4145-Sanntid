@@ -14,7 +14,7 @@ defmodule WatchDog do
 
   use GenServer
   @name :watch_dog
-  @watchdog_timer 30_000
+  @watchdog_timer 20_000
   @backup_file "watchdog_backup.txt"
 
   @cab_orders [:cab]
@@ -63,7 +63,6 @@ defmodule WatchDog do
       |> add_order(:active, order)
       |> start_timer(order)
 
-    # timer = Process.send_after(self(), {:order_expiered, order.id}, @watchdog_timer)
     FileBackup.write(new_state, @backup_file)
     {:reply, :ok, %{} = new_state}
   end
@@ -239,53 +238,33 @@ defmodule WatchDog do
   end
 
   def read_from_backup(filename) do
-    with {:ok, backup_state} <- FileBackup.read(filename),
-         {:ok, active} <-
-           filter_recent_orders(backup_state, :active, 120),
-         {:ok, standby} <- filter_recent_orders(backup_state, :standby, 10 * 60),
-         {:ok, timers} <- start_timer(active) do
-      state = %{active: active, standby: standby, timers: timers}
-      FileBackup.write(state, @backup_file)
-      state
-    else
-      _ ->
-        IO.puts("Failed to read from backup")
-        %{active: %{}, standby: %{}, timers: %{}}
+    case FileBackup.read(filename) do
+      {:ok, backup_state} ->
+        active = filter_recent_orders(backup_state, :active, 120)
+        standby = filter_recent_orders(backup_state, :standby, 10 * 60)
+
+        state = %{active: active, standby: standby, timers: %{}}
+
+        state =
+          Enum.reduce(
+            active,
+            state,
+            fn {_id, order}, int_state -> start_timer(int_state, order) end
+          )
+
+        FileBackup.write(state, @backup_file)
+        state
     end
   end
 
   def filter_recent_orders(state, order_state, time) do
-    new_state =
-      state
-      |> Map.get(order_state)
-      |> Map.values()
-      |> Enum.filter(fn order ->
-        Time.diff(Time.utc_now(), order.time) < time
-      end)
-      |> Map.new(fn order -> {order.id, order} end)
-
-    {:ok, new_state}
-  end
-
-  def start_timer(orders) when is_map(orders) do
-    timers =
-      Enum.reduce(orders, %{}, fn {_id, order}, int_timers -> start_timer(order, int_timers) end)
-
-    {:ok, timers}
-  end
-
-  def start_timer(%Order{time: order_time} = order, timers) when is_map(timers) do
-    time =
-      Time.add(order_time, @watchdog_timer, :millisecond)
-      |> Time.diff(Time.utc_now(), :millisecond)
-
-    if time >= 0 do
-      timer = Process.send_after(self(), {:order_expiered, order.id}, time)
-      Map.put(timers, order.id, timer)
-    else
-      timer = Process.send_after(self(), {:order_expiered, order.id}, 0)
-      Map.put(timers, order.id, timer)
-    end
+    state
+    |> Map.get(order_state)
+    |> Map.values()
+    |> Enum.filter(fn order ->
+      Time.diff(Time.utc_now(), order.time) <= time
+    end)
+    |> Map.new(fn order -> {order.id, order} end)
   end
 
   @doc """
