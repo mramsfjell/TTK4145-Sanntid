@@ -1,7 +1,7 @@
 defmodule LiftProject.Application do
-  # See https://hexdocs.pm/elixir/Application.html
-  # for more information on OTP Applications
-  @moduledoc false
+  @moduledoc """
+
+  """
 
   use Application
   @floors 4
@@ -11,8 +11,6 @@ defmodule LiftProject.Application do
       {Liftproject.Supervisor, []}
     ]
 
-    # See https://hexdocs.pm/elixir/Supervisor.html
-    # for other strategies and supported optionsS
     opts = [strategy: :one_for_one, name: LiftProject.Supervisor]
     Supervisor.start_link(children, opts)
   end
