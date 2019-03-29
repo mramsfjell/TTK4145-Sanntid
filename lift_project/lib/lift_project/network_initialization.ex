@@ -4,8 +4,8 @@ defmodule NetworkInitialization do
   the name of the node, cookie and tick_time.
   """
 
-  # API ----------------------------------------------------------------------
-  
+  # API ------------------------------------------------------------------------
+
   @doc """
   Credited: Jostein Løwer. https://github.com/jostlowe/kokeplata/tree/master/lib (24.03.19)
   Boots a node with a specified tick time. node_name sets the node name before @.
@@ -14,6 +14,7 @@ defmodule NetworkInitialization do
       {:ok, #PID<0.12.2>}
       iex(n1@10.100.23.253)> _
   """
+  @spec boot_node(atom, int) :: node
   def boot_node(node_name, tick_time \\ 15_000) do
     ip = get_my_ip() |> ip_to_string()
     full_name = node_name <> "@" <> ip
@@ -21,8 +22,8 @@ defmodule NetworkInitialization do
     Node.set_cookie(:Daarlig_luft)
   end
 
-  # Helper functions ----------------------------------------------------------
-  
+  # Helper functions -----------------------------------------------------------
+
   # Credited: Jostein Løwer. https://github.com/jostlowe/kokeplata/tree/master/lib (24.03.19)
   defp get_my_ip(counter \\ 0) when counter < 11 do
     Process.sleep(100)

@@ -36,6 +36,7 @@ defmodule WatchDog do
   Calls that a new order is added and sets the watchdog timer. If order not
   completed within @watchdog_timer, the order is reinjected.
   """
+  @spec new_order(map) :: {:reply, :ok, map}
   def new_order(order) do
     GenServer.call(@name, {:new_order, order})
   end
@@ -43,6 +44,7 @@ defmodule WatchDog do
   @doc """
   Casts that an order is completed and kills the watchdog process.
   """
+  @spec order_complete(map) :: :ok
   def order_complete(order) do
     GenServer.cast(@name, {:order_complete, order})
   end
@@ -52,6 +54,7 @@ defmodule WatchDog do
   affiliated with the given state. Standby is the state of cab calls from
   dead nodes. Active is the state of running nodes.
   """
+  @spec get_state() :: {:reply, map, map}
   def get_state() do
     GenServer.call(@name, :get)
   end

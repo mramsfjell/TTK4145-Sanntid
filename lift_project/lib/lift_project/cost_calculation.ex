@@ -21,8 +21,15 @@ defmodule OrderServer.Cost do
     iex> new_order = Order.new(2,:hall_up)
     iex> OrderServer.Cost.calculate_cost([Order.new(0,:cab), Order.new(1,:hall_down)],2,:down,new_order)
     6
+
+  Input: orders (list), floor (int), order (map)
+  Output: int
   """
+<<<<<<< HEAD
   @spec calculate_cost(list(any()), integer(), atom(), struct()) :: integer()
+=======
+
+>>>>>>> 09f040151e524129b100060cbf81dfc4ef2ae6d4
   def calculate_cost(orders, floor, dir, %Order{} = order) when is_list(orders) do
     order_count = length(orders)
     path = path_length(orders, {floor, dir}, order)
@@ -43,7 +50,10 @@ defmodule OrderServer.Cost do
     iex> next_order = OrderServer.Cost.next_order([], 0, :up)
     nil
   """
+<<<<<<< HEAD
   @spec next_order(list(any()), integer(), atom()) :: struct() | nil
+=======
+>>>>>>> 09f040151e524129b100060cbf81dfc4ef2ae6d4
   def next_order(orders, floor, dir) when is_list(orders) do
     Enum.min_by(
       orders,

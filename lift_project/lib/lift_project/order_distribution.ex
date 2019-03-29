@@ -21,6 +21,7 @@ defmodule OrderDistribution do
   @doc """
   Adds new order as result of reinjection of order from WatchDog.
   """
+  @spec new_order(map) :: map
   def new_order(order = %Order{}) do
     GenServer.cast(@name, {:new_order, order})
   end
@@ -28,6 +29,7 @@ defmodule OrderDistribution do
   @doc """
   Adds new order as result of I/O action.
   """
+  @spec new_order(int, atom) :: map
   def new_order(floor, button_type)
       when is_integer(floor) and button_type in @valid_orders do
     order = Order.new(floor, button_type)
