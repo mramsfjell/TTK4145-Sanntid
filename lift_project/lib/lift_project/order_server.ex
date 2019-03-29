@@ -14,7 +14,7 @@ defmodule OrderServer do
     GenServer.start_link(__MODULE__, [], name: @name)
   end
 
-  # API ---------------------------------------------------------------------------
+  # API ------------------------------------------------------------------------
 
   @doc """
   Casts that the lift is leaving a floor. The next floor is calculated, given the direction,
@@ -60,7 +60,7 @@ defmodule OrderServer do
     GenServer.call(@name, {:get})
   end
 
-  # Callbacks -------------------------------------------------------------------
+  # Callbacks ------------------------------------------------------------------
 
   def init([]) do
     case Lift.get_position() do
@@ -171,66 +171,25 @@ defmodule OrderServer do
     {:noreply, %{} = new_state}
   end
 
-  # Order data functions --------------------------------------------------------------
+  # Order data functions -------------------------------------------------------
 
-  @doc """
-  Add the given order to the :active Map in the state of the OrderServer.
-
-  ## Examples
-    iex> state = %{active: %{}}
-    iex> order = Order.new(2,:hall_up)
-    iex> OrderServer.add_order(state,order)
-    %{active: %{order.id => order}}
-  """
   def add_order(state, order) do
     put_in(state, [:active, order.id], order)
   end
 
-  @doc """
-  Removes a list of orders that has been handled.
-  """
   def remove_order(state, orders) when is_list(orders) do
     Enum.reduce(orders, state, fn order, int_state -> remove_order(int_state, order) end)
   end
 
-  @doc """
-  Removes an order by moving an order from the :active Map to the :complete Map.
-  The order is a struct as defined in the Order module.
-
-  Returns the updated state Map.
-
-  ## Examples
-    iex> order = Order.new(2,:hall_up)
-    iex> state = %{active: %{}, complete: %{}}
-    iex> OrderServer.add_order(state,order)
-    iex> OrderServer.remove_order(state,order)
-    %{active: %{}, complete: %{order.id => order}}
-  """
   def remove_order(state, %Order{} = order) do
     {_complete_order, new_state} = pop_in(state, [:active, order.id])
     put_in(new_state, [:complete, order.id], order)
   end
 
-  @doc """
-  Check if there exists an order with a given id in the :complete Map.
-
-  Returns true if this is the case.
-
-  ## Examples
-    iex> order_1 = Order.new(1,:cab)
-    iex> order_2 = Order.new(3,:hall_down)
-    iex> state = %{complete: %{order_1.id => order_1, order_2.id => order_2}}
-    iex> Order.order_in_complete?(state, order_1)
-    true
-  """
   def order_in_complete?(state, order) do
     Enum.any?(state.complete, fn {id, _complete_order} -> id == order.id end)
   end
 
-  @doc """
-  Returns a list of all orders being handled by the node corresponding to node_name,
-  with the order floor matching the provided floor.
-  """
   def fetch_orders(orders, node_name, floor, button, dir) do
     order_dir = button_to_dir(button, dir)
 
@@ -246,16 +205,6 @@ defmodule OrderServer do
     |> Enum.filter(fn order -> order.node == node_name end)
   end
 
-  @doc """
-  Returns a new direction given a button_type and the last direction.
-  If button_type is :cab, the last direction is returned.
-
-  ## Examples
-    iex> button_to_dir(:cab, :down)
-    :down
-    iex> button_to_dir(:hall_up, :down)
-    :up
-  """
   def button_to_dir(button, dir) do
     case button do
       :hall_up -> :up
@@ -264,13 +213,8 @@ defmodule OrderServer do
     end
   end
 
-  # Shell functions ---------------------------------------------------------------------
+  # Shell functions ------------------------------------------------------------
 
-  @doc """
-  Assigns a new order to the lift, and updates the :last_order in the state.
-
-  Returns the updated state Map.
-  """
   def assign_new_lift_order(%{floor: floor, dir: dir} = state) do
     active_orders =
       state
@@ -288,39 +232,20 @@ defmodule OrderServer do
     end
   end
 
-  @doc """
-  Send a given order and an :order_complete_broadcast message to the :order_server
-  on the remote_node.
-
-  Returns :ok if the message is sent.
-  """
   def send_complete_order(remote_node, order) do
     Process.send({:order_server, remote_node}, {:order_complete_broadcast, order}, [:noconnect])
   end
 
-  @doc """
-  Broadcasts a list of completed orders.
-  """
   def broadcast_complete_order(orders) when is_list(orders) do
     Enum.each(orders, fn order -> broadcast_complete_order(order) end)
   end
 
-  @doc """
-  Broadcasts an order to all nodes in the cluster, when the order is a
-  struct as defined in the Order module.
-  """
   def broadcast_complete_order(%Order{} = order) do
     Enum.each(Node.list(), fn remote_node ->
       send_complete_order(remote_node, order)
     end)
   end
 
-  @doc """
-  Set cab light for a given order struct, if the executing node of the order
-  matches Node.self(). light_state can be :on/:off.
-
-  Returns :ok
-  """
   def set_button_light(%Order{button_type: :cab} = order, light_state) do
     if order.node == Node.self() do
       Driver.set_order_button_light(order.floor, order.button_type, light_state)
@@ -329,9 +254,6 @@ defmodule OrderServer do
     :ok
   end
 
-  @doc """
-  Set hall light for a given order struct. light_state can be :on/:off.
-  """
   def set_button_light(%Order{button_type: button, floor: floor}, light_state)
       when button == :hall_up or button == :hall_down do
     Driver.set_order_button_light(floor, button, light_state)
