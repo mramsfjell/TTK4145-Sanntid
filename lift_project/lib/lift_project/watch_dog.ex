@@ -254,6 +254,8 @@ defmodule WatchDog do
 
         FileBackup.write(state, @backup_file)
         state
+        {:error, _} ->
+        state = %{active: %{}, standby: %{}, timers: %{}}
     end
   end
 
