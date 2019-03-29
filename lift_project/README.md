@@ -23,6 +23,11 @@ Takes care of any order not being handled within reasonable time, set by the tim
 ###### File back up
 Reads and writes to file to keep a record of the current and previous states.
 
+## Supervision
+The supervision tree implemented, is shown below.
+
+![picture](https://github.com/simenkrantz/TTK4145-Sanntid/tree/master/lift_project/supervision_tree.PNG)
+
 ## Assumptions
 ###### Functional
 - No multiple simultaneous errors.

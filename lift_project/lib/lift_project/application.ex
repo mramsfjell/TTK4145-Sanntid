@@ -1,6 +1,18 @@
 defmodule LiftProject.Application do
   @moduledoc """
+  This is considered to be the entry point of the project.
 
+  The system consists of the following modules:
+  - Lift
+  - Driver
+  - FloorPoller
+  - ButtonPoller
+  - OrderDistribution
+  - Auction
+  - NodeDiscovery.Listen
+  - NodeDiscovery.Broadcast
+  - OrderServer
+  - WatchDog
   """
 
   use Application
