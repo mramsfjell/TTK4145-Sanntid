@@ -1,6 +1,12 @@
 defmodule Order do
   @moduledoc """
-  Defining the data structure for, and creation of a order. The timestamp is used as an order ID.
+  Defining the data structure for, and creation of an order.
+  This data structure contains the information :floor, :button_type,
+  :id, :time, :node, :watch_dog.
+
+  As a default value, :node is set to Node.self() and :watch_dog is set to nil.
+
+  To identify an order the function make_ref/0 is used, which returns a reference.
   """
 
   @up_dir [:cab, :hall_up]

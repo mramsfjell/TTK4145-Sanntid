@@ -34,7 +34,8 @@ defmodule Lift do
   end
 
   @doc """
-  Assign a new order to the lift.
+  Assign a new order to the lift. If 'Lift' is in :init state,
+  a message on the form {:error, :not_ready} is sent.
   """
   def new_order(%Order{} = order) do
     GenServer.cast(@name, {:new_order, order})

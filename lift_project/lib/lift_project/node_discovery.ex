@@ -16,7 +16,6 @@ defmodule NodeDiscovery.Listen do
   
     def listen(socket) do
       {:ok, {_ip, _port, node_name}} = :gen_udp.recv(socket, 0)
-      # IO.puts(node_name)
   
       if node_name not in ([Node.self() | Node.list()] |> Enum.map(&to_string(&1))) do
         IO.puts("connecting to node #{node_name}")
