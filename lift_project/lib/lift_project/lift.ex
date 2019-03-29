@@ -26,6 +26,7 @@ defmodule Lift do
 
   defstruct [:state, :order, :floor, :dir, :timer]
 
+  @spec start_link(any())
   def start_link(args \\ []) do
     GenServer.start_link(__MODULE__, args, name: @name)
   end
@@ -35,6 +36,7 @@ defmodule Lift do
   @doc """
   Message the state machine that the lift has reached a floor.
   """
+  @spec at_floor(integer()) :: :ok
   def at_floor(floor) when is_integer(floor) do
     GenServer.cast(@name, {:at_floor, floor})
   end
@@ -43,6 +45,7 @@ defmodule Lift do
   Assign a new order to the lift. If 'Lift' is in :init state,
   a message on the form {:error, :not_ready} is sent.
   """
+  @spec new_order(struct()) :: :ok
   def new_order(%Order{} = order) do
     GenServer.cast(@name, {:new_order, order})
   end
@@ -60,6 +63,7 @@ defmodule Lift do
     iex> Lift.get_position()
     {:ok, 1, :up}
   """
+  @spec get_position() :: {:reply, {:ok, integer(), atom()}, struct()} | {:reply, {:error, :not_ready}, struct()}
   def get_position() do
     GenServer.call(@name, :get_position)
   end

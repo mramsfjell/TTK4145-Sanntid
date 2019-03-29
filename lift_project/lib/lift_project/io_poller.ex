@@ -9,10 +9,12 @@ defmodule ButtonPoller do
   """
   use Task
 
+  @spec start_link(integer(), atom())
   def start_link(floor, button_type) do
     Task.start_link(__MODULE__, :poller, [floor, button_type, :released])
   end
 
+  @spec child_spec(integer(), atom())
   def child_spec(floor, button_type) do
     %{
       id: to_string(floor) <> to_string(button_type),

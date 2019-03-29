@@ -16,11 +16,13 @@ defmodule OrderServer.Cost do
   @doc """
   Returns the cost for the lift executing a given order, given the last floor the lift
   passed and the last direction.
+
   ##Examples
     iex> new_order = Order.new(2,:hall_up)
     iex> OrderServer.Cost.calculate_cost([Order.new(0,:cab), Order.new(1,:hall_down)],2,:down,new_order)
     6
   """
+  @spec calculate_cost(list(any()), integer(), atom(), struct()) :: integer()
   def calculate_cost(orders, floor, dir, %Order{} = order) when is_list(orders) do
     order_count = length(orders)
     path = path_length(orders, {floor, dir}, order)
@@ -29,6 +31,7 @@ defmodule OrderServer.Cost do
 
   @doc """
   Finds the nearest order in the active orders. Returns nil if there are no orders.
+
   ##Examples
     iex> order1 = Order.new(1,:cab)
     iex> order2 = Order.new(2,:hall_down)
@@ -40,7 +43,7 @@ defmodule OrderServer.Cost do
     iex> next_order = OrderServer.Cost.next_order([], 0, :up)
     nil
   """
-
+  @spec next_order(list(any()), integer(), atom()) :: struct() | nil
   def next_order(orders, floor, dir) when is_list(orders) do
     Enum.min_by(
       orders,
@@ -63,6 +66,7 @@ defmodule OrderServer.Cost do
   If there are no orders, the path is the distance between the current floor and
   the target floor.
   """
+  @spec path_length(list(any()), tuple(), map()) :: integer()
   defp path_length([], {start_floor, _dir}, %{floor: end_floor} = target_order) do
     abs(end_floor - start_floor)
   end
@@ -71,6 +75,7 @@ defmodule OrderServer.Cost do
   When the elevator is mooving up, and the order is below, or is :hall_down the
   algorithm finds the top order and calculates the path to the order from there
   """
+  @spec path_length(list(any()), tuple(), map()) :: integer()
   defp path_length(
          orders,
          {start_floor, :up},
@@ -89,8 +94,9 @@ defmodule OrderServer.Cost do
 
   @doc """
   When the elevator is mooving down, and the order is above, or is :hall_upthe
-  algorithm finds the lowest order and calculates the path to the order from there
+  algorithm finds the lowest order and calculates the path to the order from there.
   """
+  @spec path_length(list(any()), tuple(), map()) :: integer()
   defp path_length(
          orders,
          {start_floor, :down},
@@ -112,6 +118,7 @@ defmodule OrderServer.Cost do
   If the above clauses does not match the distance can be calculated as the
   distance between the target floor and the current floor
   """
+  @spec path_length(any(), tuple(), map()) :: integer()
   defp path_length(_orders, {start_floor, _dir}, %{floor: end_floor}) do
     abs(end_floor - start_floor)
   end

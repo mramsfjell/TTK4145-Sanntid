@@ -1,7 +1,7 @@
 defmodule FileBackup do
-@moduledoc """
-Writes and reads data to an external file.
-"""
+  @moduledoc """
+  Writes and reads data to an external file.
+  """
   
   def write(data, filename) do
     {:ok, file} = File.open(filename, [:write])
