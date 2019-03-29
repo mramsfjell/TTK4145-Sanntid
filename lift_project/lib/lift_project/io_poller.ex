@@ -1,7 +1,4 @@
 defmodule ButtonPoller.Supervisor do
-  @moduledoc """
-  Supervisor for the button poller.
-  """
   use Supervisor
 
   def start_link([floors]) do
