@@ -6,6 +6,10 @@ defmodule Lift do
   A timer is implemented in order to check if the lift cab reaches two different floor
   sensors within a reasonable amount of time. If not, the direction of the cab is set once
   again and the cab continues to drive in the same direction.
+
+  Each transition will happen on entry to the respective state.
+
+  Each event triggers a state change from one state to another.
   """
   use GenServer
 
@@ -58,7 +62,6 @@ defmodule Lift do
   def init([]) do
     Driver.set_door_open_light(:off)
     Driver.set_motor_direction(:up)
-    # Process.sleep(500)
 
     data = %Lift{
       state: :init,
@@ -122,13 +125,6 @@ defmodule Lift do
 
   # State transitions -------------------------------------------------------------
 
-  @doc """
-  This transition will happen on entry to the :door_open state.
-  Stops the motor, turns the door light on for a number of seconds specified by
-  @door_timer and then tell 'OrderServer' the order has been handled.
-
-  Returns the data struct, with :state set to :door_open.
-  """
   defp door_open_transition(%Lift{} = data) do
     Driver.set_motor_direction(:stop)
     Driver.set_door_open_light(:on)
@@ -137,13 +133,6 @@ defmodule Lift do
     Map.put(data, :state, :door_open)
   end
 
-  @doc """
-  This transition will happen on entry to the :mooving state.
-  Turns off the door light and tells the 'OrderServer' the lift leaves a floor
-  and in which direction it leaves.
-
-  Returns the updated data struct, with :state set to :idle.
-  """
   defp mooving_transition(%Lift{dir: dir} = data) do
     Driver.set_door_open_light(:off)
 
@@ -157,11 +146,6 @@ defmodule Lift do
     new_data
   end
 
-  @doc """
-  This transition will happen on entry to the :idle state.
-  Stops the motor, turns off the door light and returns the updated data struct,
-  with :state set to :idle.
-  """
   defp idle_transition(%Lift{} = data) do
     Driver.set_motor_direction(:stop)
     Driver.set_door_open_light(:off)
@@ -169,14 +153,6 @@ defmodule Lift do
     Map.put(data, :state, :idle)
   end
 
-  @doc """
-  This function takes care of finalizing the initialization of the lift,
-  if the lift cab started out between two floors.
-  Stops the motor and tell 'OrderServer' the lift is ready at a floor.
-
-  Returns the updated data Map with with :state set to :idle and :floor set to
-  the corresponding floor the lift is idling at.
-  """
   defp complete_init(data, floor) do
     Driver.set_motor_direction(:stop)
     OrderServer.lift_ready()
@@ -187,12 +163,6 @@ defmodule Lift do
 
   # Events ----------------------------------------------------------------------------
 
-  @doc """
-  This event triggers the state change from :door_open to :idle.
-  Turns off the door light and tell 'OrderServer' the given order is complete.
-
-  The data struct is updated with :order set to nil.
-  """
   defp door_close_event(%Lift{order: order, dir: dir} = data) do
     Driver.set_door_open_light(:off)
     OrderServer.order_complete(order)
@@ -200,11 +170,6 @@ defmodule Lift do
     idle_transition(data)
   end
 
-  @doc """
-  This event triggers when the lift is in :idle, and a new order needs to be handled.
-
-  Returns the updated data struct.
-  """
   defp new_order_event(%Lift{state: :idle} = data, %Order{} = order) do
     if Order.order_at_floor?(order, data.floor) do
       data
@@ -218,12 +183,6 @@ defmodule Lift do
     end
   end
 
-  @doc """
-  This event triggers if :dir is set to :up, with the current floor of the
-  lift being below or at the ordered floor.
-
-  If so, the order is added to the data struct.
-  """
   defp new_order_event(
          %Lift{floor: current_floor, dir: :up} = data,
          %Order{floor: target_floor} = order
@@ -232,12 +191,6 @@ defmodule Lift do
     add_order(data, order)
   end
 
-  @doc """
-  This event triggers if :dir is set to :down, with the current floor of the
-  lift being above or at the ordered floor.
-
-  If so, the order is added to the data struct.
-  """
   defp new_order_event(
          %Lift{floor: current_floor, dir: :down} = data,
          %Order{floor: target_floor} = order
@@ -246,10 +199,6 @@ defmodule Lift do
     add_order(data, order)
   end
 
-  @doc """
-  This event cancel the timer in the data struct, and checks whether the cab
-  has reached a floor and can open the door, or continue mooving.
-  """
   defp at_floor_event(%Lift{floor: floor, order: order, timer: timer} = data) do
     IO.puts("at floor#{floor}")
     Process.cancel_timer(timer)
@@ -260,10 +209,6 @@ defmodule Lift do
     end
   end
 
-  @doc """
-  Updates :floor to floor in the data struct, before passing the updated struct
-  to 'Lift.at_floor_event/1'.
-  """
   defp at_floor_event(data, floor) do
     data
     |> Map.put(:floor, floor)
@@ -272,17 +217,10 @@ defmodule Lift do
 
   # Helper functions ------------------------------------------------------------------
 
-  @doc """
-  Add an order to the data struct defined in 'Lift'.
-  """
   defp add_order(%Lift{} = data, order) do
     Map.put(data, :order, order)
   end
 
-  @doc """
-  Updates the direction, given the last passed floor of the lift cab
-  and the floor on which the order is.
-  """
   defp update_direction(%Lift{order: order, floor: floor} = data) do
     if floor < order.floor do
       Map.put(data, :dir, :up)
@@ -291,12 +229,7 @@ defmodule Lift do
     end
   end
 
-  @doc """
-  Starts the timer in the data struct, which checks how long it takes for
-  a lift cab to  move between two floor sensors.
-  Only one timer per lift cab can run at any given time.
-  """
-  def start_timer(%Lift{timer: timer} = data) do
+  defp start_timer(%Lift{timer: timer} = data) do
     Process.cancel_timer(timer)
     timer = Process.send_after(self(), :mooving_timer, @mooving_timer)
     new_data = Map.put(data, :timer, timer)
