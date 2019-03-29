@@ -28,6 +28,7 @@ defmodule OrderServer do
   Casts that the lift is leaving a floor. The next floor is calculated, given the direction,
   and the new state is updated with the new floor and the given direction.
   """
+  @spec update_lift_position(int, atom) :: :ok
   def update_lift_position(floor, dir) do
     GenServer.cast(@name, {:lift_leaving_floor, floor, dir})
   end
@@ -36,6 +37,7 @@ defmodule OrderServer do
   Casting that an order has been completed, given a full order struct
   as defined in the Order module.
   """
+  @spec order_complete(map) :: :ok
   def order_complete(%Order{} = order) do
     GenServer.cast(@name, {:order_complete, order})
   end
@@ -43,6 +45,7 @@ defmodule OrderServer do
   @doc """
   Casting that a lift is ready to receive a new order.
   """
+  @spec lift_ready() :: :ok
   def lift_ready() do
     GenServer.cast(@name, {:lift_ready})
   end
@@ -50,6 +53,7 @@ defmodule OrderServer do
   @doc """
   Calling for the cost of a lift potentially executing a order.
   """
+  @spec evaluate_cost(struct) :: {atom, int, map}
   def evaluate_cost(order) do
     GenServer.call(@name, {:evaluate_cost, order})
   end
@@ -57,6 +61,7 @@ defmodule OrderServer do
   @doc """
   Create a new order, and turns on the button light.
   """
+  @spec new_order(struct) :: {:reply, order, %{} = new_state}
   def new_order(order) do
     GenServer.call(@name, {:new_order, order})
   end

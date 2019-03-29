@@ -12,7 +12,7 @@ defmodule OrderState do
     iex> new_state == %{active: %{order.id => order}}
     true
   """
-  @spec add(map, term, list | Order.t()) :: map
+  @spec add(map, term, list | map) :: map
   def add(data, order_state, orders) when is_map(data) and is_list(orders) do
     Enum.reduce(
       orders,
@@ -37,7 +37,7 @@ defmodule OrderState do
 
 
   """
-  @spec remove(map, term, list | Order.t()) :: map
+  @spec remove(map, term, list | map) :: map
   def remove(data, order_state, orders) when is_map(data) and is_list(orders) do
     Enum.reduce(
       orders,
@@ -62,7 +62,7 @@ defmodule OrderState do
     iex> new_state == %{active: %{},complete: %{order.id => order}}
     true
   """
-  @spec remove(map, term, list | Order.t()) :: map
+  @spec remove(map, term, list | map) :: map
   def update(data, from_state, to_state, %Order{} = order) when is_map(data) do
     data
     |> add(to_state, order)
@@ -86,7 +86,7 @@ defmodule OrderState do
     iex> result == order1
     true
   """
-  @spec fetch(map, term, (Order.t(), any() -> boolean), term()) :: list
+  @spec fetch(map, term, (map, any() -> boolean), term()) :: list
   def fetch(data, order_state, filter_funtion, filter_args)
       when is_map(data) and is_function(filter_funtion) do
     data
