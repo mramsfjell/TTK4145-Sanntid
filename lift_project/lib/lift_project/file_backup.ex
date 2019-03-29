@@ -1,4 +1,8 @@
 defmodule FileBackup do
+@moduledoc """
+Writes and reads data to an external file.
+"""
+  
   def write(data, filename) do
     {:ok, file} = File.open(filename, [:write])
     binary = :erlang.term_to_binary(data)

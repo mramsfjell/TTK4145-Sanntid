@@ -1,11 +1,11 @@
 defmodule Lift do
   @moduledoc """
-  Statemachine for controlling the lift given a lift order.
-  Keeps track of one order at a time, and drives to complete that specific order.
+  State machine for controlling the lift given a lift order.
+  Keeps track of one order at a time, and executes to complete that specific order.
 
-  A timer is implemented in order to check if the lift cab reaches two different floor
-  sensors within a reasonable amount of time. If not, the direction of the cab is set once
-  again and the cab continues to drive in the same direction.
+  A timer is implemented in order to check if the lift cab moves between floor
+  sensors within a reasonable amount of time. If not, the direction of the cab
+  is set once again and the cab continues in the same direction.
 
   Each transition will happen on entry to the respective state.
 
