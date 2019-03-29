@@ -42,16 +42,6 @@ defmodule OrderDistribution do
   end
 end
 
-defmodule Auction.Supervisor do
-  def start_link(_args) do
-    DynamicSupervisor.start_link(name: :auction_supervisor)
-  end
-
-  def start_child(order) do
-    DynamicSupervisor.start_child(__MODULE__, {Auction, order})
-  end
-end
-
 defmodule Auction do
   use Task
 
@@ -104,7 +94,6 @@ defmodule Auction do
       iex > assign_watchdog(order, node_list)
       {{2, :hall_up}, Node.self}
   """
-
   def assign_watchdog(order, node_list) do
     watch_dog =
       ([Node.self() | node_list] -- [order.node])
@@ -118,7 +107,6 @@ defmodule Auction do
   isn't already completed, the order is given to the lowest bidder. In addition,
   post-auction processing is performed.
   """
-
   def find_lowest_bidder(nodes, order) do
     IO.inspect(order, label: "Order on auction")
 

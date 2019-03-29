@@ -53,13 +53,6 @@ defmodule OrderServer do
     GenServer.call(@name, {:new_order, order})
   end
 
-  @doc """
-  Get current orders, used for debugging purposes only.
-  """
-  def get_orders() do
-    GenServer.call(@name, {:get})
-  end
-
   # Callbacks ------------------------------------------------------------------
 
   def init([]) do
@@ -148,10 +141,6 @@ defmodule OrderServer do
     set_button_light(order, :on)
     FileBackup.write(new_state, @backup_file)
     {:reply, order, %{} = new_state}
-  end
-
-  def handle_call({:get}, _from, state) do
-    {:reply, {:ok, state}, %{} = state}
   end
 
   def handle_info({:order_complete_broadcast, order}, state) do

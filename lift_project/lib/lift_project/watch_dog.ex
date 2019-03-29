@@ -5,11 +5,10 @@ defmodule WatchDog do
   This module is meant to take care of any order not being handled within
   reasonable time, set by the timer length @watchdog_timer.
 
-  A process starts each time an order's watch_node is set up. If the timer
-  of a specific order goes out before the order_complete message is received,
+  A process starts each time an order's watch_node is set up. If everything works as expected,
+  the process is killed when the order_complete message is received.
+  If the timer of a specific order goes out before the order_complete message is received,
   this order is reinjected to the system by the order distribution logic.
-  If everything works as expected, the process is killed when the order_complete
-  message is received.
   """
 
   use GenServer
