@@ -2,6 +2,10 @@ defmodule OrderDistribution do
   @moduledoc """
   This module takes care of distributing orders,
   both new orders from I/O and reinjected orders from the watchdog.
+
+  Uses the following modules:
+  - Order
+  - Watchdog
   """
   use GenServer
 

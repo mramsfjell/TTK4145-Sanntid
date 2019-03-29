@@ -1,6 +1,6 @@
 defmodule LiftProject.Application do
   @moduledoc """
-  
+
   """
 
   use Application

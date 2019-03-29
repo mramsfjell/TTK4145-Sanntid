@@ -3,6 +3,14 @@ defmodule OrderServer do
   This module keeps track of orders collected from OrderDistribution, in addition to
   setting hall lights and calculating the cost of a given order for the respective lift.
   During initialization, if the Lift process is not found, OrderServer tries again.
+
+  Uses the following modules:
+  - Lift
+  - OrderDistribution
+  - FileBackup
+  - WatchDog
+  - Lift
+  - Driver
   """
   use GenServer
 

@@ -30,9 +30,13 @@ Reads and writes to file to keep a record of the current and previous states.
 - A person ordering the lift down will follow up with a cab call below for optimal performance from the system.
 - Since the use of the obstruction switch and stop button is optional, we have chosen to not add this to our project.
 ###### Code design
-- Since private functions can't be accessed externally, Elixir will warn if a private function has a @doc attribute and will        discard its content. We have therefore excluded docs and other comments regarding implementation of functions in private functions.
+- Since private functions can't be accessed externally, Elixir will warn if a private function has a @doc attribute and will discard its content. We have therefore excluded docs and other comments regarding implementation of functions in private functions.
 - Further design is based on the given [requirements](https://github.com/TTK4145/Project2018/blob/master/EVALUATION.md#code-evaluation).
 - Documentation for point of entry can be found in "Application" as this is the module that is called first.
+
+## Dependencies
+- Elevator Server
+- 
 
 ## Accreditations
 Snippets of Jostein Løwer's code at his [repository](https://github.com/jostlowe/kokeplata) has been used as inspiration in some of our modules. There are also some functions from his examples which are used directly. For more details on Jostein's code, see the documentation.
