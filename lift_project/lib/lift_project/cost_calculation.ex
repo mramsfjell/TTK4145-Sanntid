@@ -1,5 +1,10 @@
 defmodule OrderServer.Cost do
-  require Order
+  @moduledoc """
+  The module calculates the cost of a given order, using 
+
+  Uses the following modules:
+  - Order
+  """
 
   @up_dir [:cab, :hall_up]
   @down_dir [:cab, :hall_down]

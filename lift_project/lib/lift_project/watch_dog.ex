@@ -9,7 +9,6 @@ defmodule WatchDog do
   the process is killed when the order_complete message is received.
   If the timer of a specific order goes out before the order_complete message is received,
   this order is reinjected to the system by the order distribution logic.
-<<<<<<< HEAD
   If everything works as expected, the process is killed when the order_complete
   message is received.
 
@@ -17,8 +16,6 @@ defmodule WatchDog do
   - OrderDistribution
   - Order
   - FileBackup
-=======
->>>>>>> fd123fcf46e653104b86b6c1ff5d1fe6bf7c7fa3
   """
 
   use GenServer

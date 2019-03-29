@@ -10,6 +10,12 @@ defmodule Lift do
   Each transition will happen on entry to the respective state.
 
   Each event triggers a state change from one state to another.
+
+  Uses the following modules:
+  - Driver
+  - OrderServer
+  - NetworkInitialization
+  - Order
   """
   use GenServer
 

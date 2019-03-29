@@ -7,4 +7,3 @@ defmodule Auction.Supervisor do
       DynamicSupervisor.start_child(__MODULE__, {Auction, order})
     end
 end
-  
