@@ -1,7 +1,7 @@
 defmodule ButtonPoller do
   @moduledoc """
-  Will through a state machine prevent that a continous push of a orderbutton
-  won't spam the system with orders.
+  Will through a state machine prevent that a continous push of a order button
+  will spam the system with orders.
 
   Uses the following modules:
   - Driver
@@ -60,8 +60,8 @@ end
 
 defmodule FloorPoller do
   @moduledoc """
-  Will through a state machine prevent that a continous triggering of a floor
-  sensor won't spam with :at_floor.
+  Will through a state machine prevent that continous triggering of a floor
+  sensor will spam with :at_floor.
 
   Uses the following modules:
   - Driver
