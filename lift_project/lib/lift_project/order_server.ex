@@ -170,24 +170,24 @@ defmodule OrderServer do
 
   # Order data functions -------------------------------------------------------
 
-  def add_order(state, order) do
+  defp add_order(state, order) do
     put_in(state, [:active, order.id], order)
   end
 
-  def remove_order(state, orders) when is_list(orders) do
+  defp remove_order(state, orders) when is_list(orders) do
     Enum.reduce(orders, state, fn order, int_state -> remove_order(int_state, order) end)
   end
 
-  def remove_order(state, %Order{} = order) do
+  defp remove_order(state, %Order{} = order) do
     {_complete_order, new_state} = pop_in(state, [:active, order.id])
     put_in(new_state, [:complete, order.id], order)
   end
 
-  def order_in_complete?(state, order) do
+  defp order_in_complete?(state, order) do
     Enum.any?(state.complete, fn {id, _complete_order} -> id == order.id end)
   end
 
-  def fetch_orders(orders, node_name, floor, button, dir) do
+  defp fetch_orders(orders, node_name, floor, button, dir) do
     order_dir = button_to_dir(button, dir)
 
     orders
@@ -196,13 +196,13 @@ defmodule OrderServer do
     |> Enum.filter(fn order -> Order.order_at_floor?(order, floor, order_dir) end)
   end
 
-  def filter_node(orders, node_name) do
+  defp filter_node(orders, node_name) do
     orders
     |> Map.values()
     |> Enum.filter(fn order -> order.node == node_name end)
   end
 
-  def button_to_dir(button, dir) do
+  defp button_to_dir(button, dir) do
     case button do
       :hall_up -> :up
       :hall_down -> :down
@@ -212,7 +212,7 @@ defmodule OrderServer do
 
   # Shell functions ------------------------------------------------------------
 
-  def assign_new_lift_order(%{floor: floor, dir: dir} = state) do
+  defp assign_new_lift_order(%{floor: floor, dir: dir} = state) do
     active_orders =
       state
       |> Map.get(:active)
@@ -229,21 +229,21 @@ defmodule OrderServer do
     end
   end
 
-  def send_complete_order(remote_node, order) do
+  defp send_complete_order(remote_node, order) do
     Process.send({:order_server, remote_node}, {:order_complete_broadcast, order}, [:noconnect])
   end
 
-  def broadcast_complete_order(orders) when is_list(orders) do
+  defp broadcast_complete_order(orders) when is_list(orders) do
     Enum.each(orders, fn order -> broadcast_complete_order(order) end)
   end
 
-  def broadcast_complete_order(%Order{} = order) do
+  defp broadcast_complete_order(%Order{} = order) do
     Enum.each(Node.list(), fn remote_node ->
       send_complete_order(remote_node, order)
     end)
   end
 
-  def set_button_light(%Order{button_type: :cab} = order, light_state) do
+  defp set_button_light(%Order{button_type: :cab} = order, light_state) do
     if order.node == Node.self() do
       Driver.set_order_button_light(order.floor, order.button_type, light_state)
     end
@@ -251,12 +251,12 @@ defmodule OrderServer do
     :ok
   end
 
-  def set_button_light(%Order{button_type: button, floor: floor}, light_state)
+  defp set_button_light(%Order{button_type: button, floor: floor}, light_state)
       when button == :hall_up or button == :hall_down do
     Driver.set_order_button_light(floor, button, light_state)
   end
 
-  def read_from_backup(filename) do
+  defp read_from_backup(filename) do
     case FileBackup.read(filename) do
       {:error, _reason} ->
         {%{}, %{}}
@@ -268,7 +268,7 @@ defmodule OrderServer do
     end
   end
 
-  def filter_backup(backup_state, order_state, time_limit) do
+  defp filter_backup(backup_state, order_state, time_limit) do
     backup_state
     |> Map.get(order_state)
     |> Map.values()
@@ -276,7 +276,7 @@ defmodule OrderServer do
     |> Map.new(fn order -> {order.id, order} end)
   end
 
-  def pop_outdated_orders(state, order_type, time) do
+  defp pop_outdated_orders(state, order_type, time) do
     outdated_orders =
       state
       |> Map.get(order_type)

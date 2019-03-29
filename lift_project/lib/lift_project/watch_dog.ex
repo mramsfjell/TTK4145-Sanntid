@@ -143,21 +143,21 @@ defmodule WatchDog do
   @doc """
   Adds an order with its affiliated state to the state map.
   """
-  def add_order(state, order_state, order) do
+  defp add_order(state, order_state, order) do
     put_in(state, [order_state, order.id], order)
   end
 
   @doc """
-  When remoove is called with an empty list of orders to remoove
+  When remove is called with an empty list of orders to remoove
   """
-  def remove_order(state, _order_state, []) do
+  defp remove_order(state, _order_state, []) do
     state
   end
 
   @doc """
   Removes multiple orders from the state map.
   """
-  def remove_order(state, order_state, orders) when is_list(orders) do
+  defp remove_order(state, order_state, orders) when is_list(orders) do
     Enum.reduce(orders, state, fn order, int_state ->
       remove_order(int_state, order_state, order)
     end)
@@ -166,7 +166,7 @@ defmodule WatchDog do
   @doc """
   Removes a single order from the state map.
   """
-  def remove_order(state, order_state, %Order{} = order) do
+  defp remove_order(state, order_state, %Order{} = order) do
     {_complete, new_state} = pop_in(state, [order_state, order.id])
     new_state
   end
@@ -174,7 +174,7 @@ defmodule WatchDog do
   @doc """
   Fetches the node affiliated with the node_name's order.
   """
-  def fetch_node(state, node_name) do
+  defp fetch_node(state, node_name) do
     node_orders =
       state
       |> Map.get(:active)
@@ -187,28 +187,28 @@ defmodule WatchDog do
   @doc """
   Fetch all cab orders.
   """
-  def fetch_order_type(orders, :cab) do
+  defp fetch_order_type(orders, :cab) do
     {:ok, Enum.filter(orders, fn order -> order.button_type in @cab_orders end)}
   end
 
   @doc """
   Fetch all hall orders.
   """
-  def fetch_order_type(orders, :hall) do
+  defp fetch_order_type(orders, :hall) do
     {:ok, Enum.filter(orders, fn order -> order.button_type in @hall_orders end)}
   end
 
   @doc """
   Iterates over the orders with reinject_order(%Order{} = order).
   """
-  def reinject_order(orders) when is_list(orders) do
+  defp reinject_order(orders) when is_list(orders) do
     Enum.each(orders, fn order -> reinject_order(order) end)
   end
 
   @doc """
   Reinjects the provided order into OrderDistribution.
   """
-  def reinject_order(%Order{} = order) do
+  defp reinject_order(%Order{} = order) do
     Logger.debug("Reinjecting #{inspect(order)}")
     OrderDistribution.new_order(order)
   end
@@ -216,7 +216,7 @@ defmodule WatchDog do
   @doc """
   Iterates over the orders with move_to_standby(state, %Order{} = order).
   """
-  def move_to_standby(state, orders)
+  defp move_to_standby(state, orders)
       when is_list(orders) do
     Enum.reduce(orders, state, fn order, int_state ->
       move_to_standby(int_state, order)
@@ -227,7 +227,7 @@ defmodule WatchDog do
   Moves the given order to standby state in the state map by deleting the order
   in active state and adding it to the standby state. Returns the rebuilt state map.
   """
-  def move_to_standby(state, %Order{} = order) do
+  defp move_to_standby(state, %Order{} = order) do
     new_active =
       state
       |> Map.get(:active)
@@ -243,7 +243,7 @@ defmodule WatchDog do
     |> Map.put(:standby, new_standby)
   end
 
-  def read_from_backup(filename) do
+  defp read_from_backup(filename) do
     case FileBackup.read(filename) do
       {:ok, backup_state} ->
         active = filter_recent_orders(backup_state, :active, 120)
@@ -265,7 +265,7 @@ defmodule WatchDog do
     end
   end
 
-  def filter_recent_orders(state, order_state, time) do
+  defp filter_recent_orders(state, order_state, time) do
     state
     |> Map.get(order_state)
     |> Map.values()
@@ -279,16 +279,16 @@ defmodule WatchDog do
   Start a new timer
   """
 
-  def start_timer(%{} = state, %Order{} = order) do
+  defp start_timer(%{} = state, %Order{} = order) do
     timer = Process.send_after(self(), {:order_expiered, order.id}, @watchdog_timer)
     put_in(state, [:timers, order.id], timer)
   end
 
-  def stop_timer(state, orders) when is_list(orders) do
+  defp stop_timer(state, orders) when is_list(orders) do
     Enum.reduce(orders, state, fn order, int_state -> stop_timer(int_state, order) end)
   end
 
-  def stop_timer(state, %Order{} = order) do
+  defp stop_timer(state, %Order{} = order) do
     {timer, new_state} = pop_in(state, [:timers, order.id])
 
     if timer != nil do

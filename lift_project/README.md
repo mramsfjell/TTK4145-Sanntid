@@ -36,7 +36,6 @@ Reads and writes to file to keep a record of the current and previous states.
 
 ## Dependencies
 - Elevator Server
-- 
 
 ## Accreditations
 Snippets of Jostein Løwer's code at his [repository](https://github.com/jostlowe/kokeplata) has been used as inspiration in some of our modules. There are also some functions from his examples which are used directly. For more details on Jostein's code, see the documentation.
