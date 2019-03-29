@@ -1,6 +1,14 @@
 defmodule OrderServer.Cost do
   @moduledoc """
+<<<<<<< HEAD
   The module calculates the cost of a given order, using
+=======
+  The module calculates the cost of a given order.
+
+  The calculation is based on counting the number of orders each lift
+  has at the moment, and finding the total path length the lift cab has
+  to travel from its current position to the targeted position.
+>>>>>>> 1457ffd6130ecc72d0fffb979a7a559961530e46
 
   Uses the following modules:
   - Order
@@ -56,7 +64,7 @@ defmodule OrderServer.Cost do
 
   @doc """
   General algorithm:
-  Find the path length from the start possition to the target possition along the
+  Find the path length from the start position to the target position along the
   path given by orders
 
   If there are no orders, the path is the distance between the current floor and

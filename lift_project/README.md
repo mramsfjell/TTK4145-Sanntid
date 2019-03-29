@@ -23,6 +23,11 @@ Takes care of any order not being handled within reasonable time, set by the tim
 ###### File back up
 Reads and writes to file to keep a record of the current and previous states.
 
+## Supervision
+The supervision tree implemented, is shown below.
+
+![picture](supervision_tree.png)
+
 ## Assumptions
 ###### Functional
 - No multiple simultaneous errors.
