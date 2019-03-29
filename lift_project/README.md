@@ -26,7 +26,7 @@ Reads and writes to file to keep a record of the current and previous states.
 ## Supervision
 The supervision tree implemented, is shown below.
 
-![picture](https://github.com/simenkrantz/TTK4145-Sanntid/tree/master/lift_project/supervision_tree.PNG)
+![picture](supervision_tree.png)
 
 ## Assumptions
 ###### Functional
