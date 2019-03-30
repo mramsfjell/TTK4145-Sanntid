@@ -18,12 +18,10 @@ defmodule OrderServer.Cost do
   passed and the last direction.
 
   ##Examples
+    iex> import Order
     iex> new_order = Order.new(2,:hall_up)
     iex> OrderServer.Cost.calculate_cost([Order.new(0,:cab), Order.new(1,:hall_down)],2,:down,new_order)
     6
-
-  Input: orders (list), floor (int), order (map)
-  Output: int
   """
   @spec calculate_cost(list(any()), integer(), atom(), struct()) :: integer()
   def calculate_cost(orders, floor, dir, %Order{} = order) when is_list(orders) do
@@ -36,6 +34,7 @@ defmodule OrderServer.Cost do
   Finds the nearest order in the active orders. Returns nil if there are no orders.
 
   ##Examples
+    iex> import Order
     iex> order1 = Order.new(1,:cab)
     iex> order2 = Order.new(2,:hall_down)
     iex> orders = [order1,order2]
@@ -43,6 +42,7 @@ defmodule OrderServer.Cost do
     iex> order1 == next_order
     true
 
+    iex> import Order
     iex> next_order = OrderServer.Cost.next_order([], 0, :up)
     nil
   """

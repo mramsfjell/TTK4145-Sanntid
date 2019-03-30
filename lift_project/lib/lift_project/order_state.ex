@@ -28,7 +28,7 @@ defmodule OrderState do
   @doc ~S"""
   Removes the given order(s) from the given order state map.
 
-  ##Examples
+  ## Examples
     iex> import Order
     iex> order = Order.new(2,:hall_up)
     iex> state = %{active: %{order.id => order}}
@@ -54,7 +54,7 @@ defmodule OrderState do
   @doc ~S"""
     Moove the given order(s) from one state to another in the given state map
 
-    Examples #
+    ## Examples
     iex> import Order
     iex> order = Order.new(2,:hall_up)
     iex> state = %{active: %{order.id => order},complete: %{}}
@@ -76,7 +76,9 @@ defmodule OrderState do
   end
 
   @doc ~S"""
-    Return a list of orders from the given order state where where the filter_function returns a truty value
+    Return a list of orders from the given order state where where the filter_function returns a truthy value
+
+    ## Examples
     iex> import Order
     iex> order1 = Order.new(2,:hall_up)
     iex> order2 = Order.new(1,:hall_up)
