@@ -38,6 +38,7 @@ The supervision tree implemented, is shown below.
 - Since private functions can't be accessed externally, Elixir will warn if a private function has a @doc attribute and will discard its content. We have therefore excluded docs and other comments regarding implementation of functions in private functions.
 - Further design is based on the given [requirements](https://github.com/TTK4145/Project2018/blob/master/EVALUATION.md#code-evaluation).
 - Documentation for point of entry can be found in "Application" as this is the module that is called first.
+- Documentation is assumed to give the reader a explanation of what the code is going to do and why, rather than how it is implemented.
 
 ## Dependencies
 - Elevator Server
