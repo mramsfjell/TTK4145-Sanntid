@@ -1,7 +1,6 @@
 defmodule ButtonPoller do
   @moduledoc """
-  Will through a state machine prevent that a continous push of a order button
-  will spam the system with orders.
+  Will ensure that one push of a button wil only generate one input message to the system.
 
   Uses the following modules:
   - Driver
@@ -9,12 +8,10 @@ defmodule ButtonPoller do
   """
   use Task
 
-  @spec start_link(integer(), atom())
   def start_link(floor, button_type) do
     Task.start_link(__MODULE__, :poller, [floor, button_type, :released])
   end
 
-  @spec child_spec(integer(), atom())
   def child_spec(floor, button_type) do
     %{
       id: to_string(floor) <> to_string(button_type),
@@ -24,7 +21,7 @@ defmodule ButtonPoller do
     }
   end
 
-  #Poller logic influenced by Jostein Løwer.
+  # Poller logic influenced by Jostein Løwer.
   def poller(floor, button_type, :released) do
     Process.sleep(200)
 
@@ -47,6 +44,7 @@ defmodule ButtonPoller do
 
   def poller(floor, button_type, :pushed) do
     Process.sleep(200)
+
     case Driver.get_order_button_state(floor, button_type) do
       0 ->
         poller(floor, button_type, :released)
@@ -62,8 +60,7 @@ end
 
 defmodule FloorPoller do
   @moduledoc """
-  Will through a state machine prevent that continous triggering of a floor
-  sensor will spam with :at_floor.
+  Ensures that the system only gets one input message once the lift reaches a new floor.
 
   Uses the following modules:
   - Driver
@@ -79,12 +76,14 @@ defmodule FloorPoller do
     %{id: id, start: {__MODULE__, :start_link, []}, restart: :permanent, type: :worker}
   end
 
-  #Poller logic influenced by Jostein Løwer.
+  # Poller logic influenced by Jostein Løwer.
   def poller(:idle) do
     Process.sleep(200)
+
     case Driver.get_floor_sensor_state() do
       :between_floors ->
         poller(:between_floors)
+
       _other ->
         poller(:idle)
     end

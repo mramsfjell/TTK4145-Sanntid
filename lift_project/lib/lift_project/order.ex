@@ -5,17 +5,15 @@ defmodule Order do
   :id, :time, :node, :watch_dog.
 
   As a default value, :node is set to Node.self() and :watch_dog is set to nil.
-
-  To identify an order the function make_ref/0 is used, which returns a reference.
   """
 
   @up_dir [:cab, :hall_up]
   @down_dir [:cab, :hall_down]
   @valid_order [:hall_down, :cab, :hall_up]
   @enforce_keys [:floor, :button_type]
+
   defstruct [:floor, :button_type, :id, :time, node: nil, watch_dog: nil]
 
-  @spec new(int, atom) :: map
   def new(floor, button_type)
       when is_integer(floor) and button_type in @valid_order do
     %Order{
@@ -27,17 +25,14 @@ defmodule Order do
     }
   end
 
-  @spec order_at_floor(map, int, atom) :: map
   def order_at_floor?(%Order{} = order, floor, :up) do
     order.floor == floor and order.button_type in @up_dir
   end
 
-  @spec order_at_floor(map, int, atom) :: map
   def order_at_floor?(%Order{} = order, floor, :down) do
     order.floor == floor and order.button_type in @down_dir
   end
 
-  @spec order_at_floor(map, int) :: map
   def order_at_floor?(%Order{} = order, floor) do
     order.floor == floor
   end

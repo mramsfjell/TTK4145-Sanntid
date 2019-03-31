@@ -2,7 +2,7 @@ defmodule OrderServer do
   @moduledoc """
   This module keeps track of orders collected from OrderDistribution, in addition to
   setting hall lights and calculating the cost of a given order for the respective lift.
-  During initialization, if the Lift process is not found, OrderServer tries again.
+  Initialization is not completed uuntil the lift is ready.
 
   Uses the following modules:
   - Lift
@@ -25,43 +25,39 @@ defmodule OrderServer do
   # API ------------------------------------------------------------------------
 
   @doc """
-  Casts that the lift is leaving a floor. The next floor is calculated, given the direction,
+  Send message that the lift is leaving a floor. The next floor is calculated, given the direction,
   and the new state is updated with the new floor and the given direction.
   """
-  @spec update_lift_position(int, atom) :: :ok
+
   def update_lift_position(floor, dir) do
     GenServer.cast(@name, {:lift_leaving_floor, floor, dir})
   end
 
   @doc """
-  Casting that an order has been completed, given a full order struct
+  Send message that an order has been completed, given a full order struct
   as defined in the Order module.
   """
-  @spec order_complete(map) :: :ok
   def order_complete(%Order{} = order) do
     GenServer.cast(@name, {:order_complete, order})
   end
 
   @doc """
-  Casting that a lift is ready to receive a new order.
+  Send message that a lift is ready to receive a new order.
   """
-  @spec lift_ready() :: :ok
   def lift_ready() do
     GenServer.cast(@name, {:lift_ready})
   end
 
   @doc """
-  Calling for the cost of a lift potentially executing a order.
+  Synchronous call for the cost of a lift potentially executing a order.
   """
-  @spec evaluate_cost(struct) :: {atom, int, map}
   def evaluate_cost(order) do
     GenServer.call(@name, {:evaluate_cost, order})
   end
 
   @doc """
-  Create a new order, and turns on the button light.
+  Synchronous call assigning a new order. Turns on the button light and returns the order as an accnowledgement.
   """
-  @spec new_order(struct) :: {:reply, order, %{} = new_state}
   def new_order(order) do
     GenServer.call(@name, {:new_order, order})
   end
@@ -157,7 +153,6 @@ defmodule OrderServer do
   end
 
   def handle_info({:order_complete_broadcast, order}, state) do
-    # IO.inspect(order)
     new_state = remove_order(state, order)
     set_button_light(order, :off)
     WatchDog.order_complete(order)
@@ -215,52 +210,6 @@ defmodule OrderServer do
     end
   end
 
-  # Shell functions ------------------------------------------------------------
-
-  defp assign_new_lift_order(%{floor: floor, dir: dir} = state) do
-    active_orders =
-      state
-      |> Map.get(:active)
-      |> Map.values()
-      |> Enum.filter(fn order -> order.node == Node.self() end)
-
-    case OrderServer.Cost.next_order(active_orders, floor, dir) do
-      nil ->
-        Map.put(state, :last_order, nil)
-
-      order ->
-        Lift.new_order(order)
-        Map.put(state, :last_order, order)
-    end
-  end
-
-  defp send_complete_order(remote_node, order) do
-    Process.send({:order_server, remote_node}, {:order_complete_broadcast, order}, [:noconnect])
-  end
-
-  defp broadcast_complete_order(orders) when is_list(orders) do
-    Enum.each(orders, fn order -> broadcast_complete_order(order) end)
-  end
-
-  defp broadcast_complete_order(%Order{} = order) do
-    Enum.each(Node.list(), fn remote_node ->
-      send_complete_order(remote_node, order)
-    end)
-  end
-
-  defp set_button_light(%Order{button_type: :cab} = order, light_state) do
-    if order.node == Node.self() do
-      Driver.set_order_button_light(order.floor, order.button_type, light_state)
-    end
-
-    :ok
-  end
-
-  defp set_button_light(%Order{button_type: button, floor: floor}, light_state)
-      when button == :hall_up or button == :hall_down do
-    Driver.set_order_button_light(floor, button, light_state)
-  end
-
   defp read_from_backup(filename) do
     case FileBackup.read(filename) do
       {:error, _reason} ->
@@ -297,5 +246,51 @@ defmodule OrderServer do
 
     new_state = Map.put(state, order_type, valid_orders)
     {outdated_orders, new_state}
+  end
+
+  # Helper functions ------------------------------------------------------------
+
+  defp assign_new_lift_order(%{floor: floor, dir: dir} = state) do
+    active_orders =
+      state
+      |> Map.get(:active)
+      |> Map.values()
+      |> Enum.filter(fn order -> order.node == Node.self() end)
+
+    case OrderServer.Cost.closest_order(active_orders, floor, dir) do
+      nil ->
+        Map.put(state, :last_order, nil)
+
+      order ->
+        Lift.new_order(order)
+        Map.put(state, :last_order, order)
+    end
+  end
+
+  defp send_complete_order(remote_node, order) do
+    Process.send({:order_server, remote_node}, {:order_complete_broadcast, order}, [:noconnect])
+  end
+
+  defp broadcast_complete_order(orders) when is_list(orders) do
+    Enum.each(orders, fn order -> broadcast_complete_order(order) end)
+  end
+
+  defp broadcast_complete_order(%Order{} = order) do
+    Enum.each(Node.list(), fn remote_node ->
+      send_complete_order(remote_node, order)
+    end)
+  end
+
+  defp set_button_light(%Order{button_type: :cab} = order, light_state) do
+    if order.node == Node.self() do
+      Driver.set_order_button_light(order.floor, order.button_type, light_state)
+    end
+
+    :ok
+  end
+
+  defp set_button_light(%Order{button_type: button, floor: floor}, light_state)
+       when button == :hall_up or button == :hall_down do
+    Driver.set_order_button_light(floor, button, light_state)
   end
 end

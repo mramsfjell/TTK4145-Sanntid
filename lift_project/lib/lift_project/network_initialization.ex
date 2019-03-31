@@ -1,7 +1,8 @@
 defmodule NetworkInitialization do
   @moduledoc """
-  Initializes the node by fetching IP and setting
-  the name of the node, cookie and tick_time.
+  Initializes the node by finding IP adress and setting
+  the name of the node, cookie and time until the node is dropped from the cluster
+  if no heart beat messages are recieved.
   """
 
   # API ------------------------------------------------------------------------
@@ -10,11 +11,7 @@ defmodule NetworkInitialization do
   Credited: Jostein Løwer. https://github.com/jostlowe/kokeplata/tree/master/lib (24.03.19)
   Boots a node with a specified tick time. node_name sets the node name before @.
   The IP-address is automatically imported.
-      iex> NetworkInitialization.boot_node "n1"
-      {:ok, #PID<0.12.2>}
-      iex(n1@10.100.23.253)> _
   """
-  @spec boot_node(atom, int) :: node
   def boot_node(node_name, tick_time \\ 15_000) do
     ip = get_my_ip() |> ip_to_string()
     full_name = node_name <> "@" <> ip
@@ -27,6 +24,7 @@ defmodule NetworkInitialization do
   # Credited: Jostein Løwer. https://github.com/jostlowe/kokeplata/tree/master/lib (24.03.19)
   defp get_my_ip(counter \\ 0) when counter < 11 do
     Process.sleep(100)
+
     if counter == 10 do
       IO.puts("Couldn't find my IP")
     end

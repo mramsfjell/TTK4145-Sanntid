@@ -1,9 +1,8 @@
 defmodule FileBackup do
   @moduledoc """
-  Writes and reads data to an external file.
+  Module containing helperfunctions for reading and writing from file.
   """
-  
-  @spec write(any(), String.t())
+
   def write(data, filename) do
     {:ok, file} = File.open(filename, [:write])
     binary = :erlang.term_to_binary(data)
@@ -11,7 +10,6 @@ defmodule FileBackup do
     File.close(file)
   end
 
-  @spec read(String.t()) :: {:ok, any()} | {:error, reason}
   def read(filename) do
     case File.read(filename) do
       {:ok, binary} ->

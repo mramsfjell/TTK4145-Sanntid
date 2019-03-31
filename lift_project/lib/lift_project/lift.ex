@@ -1,11 +1,11 @@
 defmodule Lift do
   @moduledoc """
-  State machine for controlling the lift given a lift order.
+  State machine for controlling the lift given a single lift order.
   Keeps track of one order at a time, and executes to complete that specific order.
 
   A timer is implemented in order to check if the lift cab moves between floor
-  sensors within a reasonable amount of time. If not, the direction of the cab
-  is set once again and the cab continues in the same direction.
+  sensors within a reasonable amount of time. If not, tif not, the lift
+  is restarted in order to start in a known state
 
   Each transition will happen on entry to the respective state.
 
@@ -21,12 +21,11 @@ defmodule Lift do
 
   @name :Lift_FSM
   @door_timer 2_000
-  @mooving_timer 3_000
+  @mooving_timer 4_000
   @enforce_keys [:state, :order, :floor, :dir, :timer]
 
   defstruct [:state, :order, :floor, :dir, :timer]
 
-  @spec start_link(any())
   def start_link(args \\ []) do
     GenServer.start_link(__MODULE__, args, name: @name)
   end
@@ -36,7 +35,7 @@ defmodule Lift do
   @doc """
   Message the state machine that the lift has reached a floor.
   """
-  @spec at_floor(integer()) :: :ok
+
   def at_floor(floor) when is_integer(floor) do
     GenServer.cast(@name, {:at_floor, floor})
   end
@@ -45,25 +44,15 @@ defmodule Lift do
   Assign a new order to the lift. If 'Lift' is in :init state,
   a message on the form {:error, :not_ready} is sent.
   """
-  @spec new_order(struct()) :: :ok
+
   def new_order(%Order{} = order) do
     GenServer.cast(@name, {:new_order, order})
   end
 
   @doc """
-  Get the possition, ie  next floor and current direction of the lift. returns
+  Get the possition, ie  next floor and current direction of the lift. Returns
   error if the state machine is not initialized
-
-  ## Examples
-    iex> %Lift{state: :init, order: nil, floor: 0, dir: :up}
-    iex> Lift.get_position()
-    {:error, :not_ready}
-
-    iex> %Lift{state: :idle, order: nil, floor: 1, dir: :up}
-    iex> Lift.get_position()
-    {:ok, 1, :up}
   """
-  @spec get_position() :: {:reply, {:ok, integer(), atom()}, struct()} | {:reply, {:error, :not_ready}, struct()}
   def get_position() do
     GenServer.call(@name, :get_position)
   end
@@ -90,13 +79,11 @@ defmodule Lift do
   end
 
   def handle_cast({:at_floor, floor}, %Lift{state: :init} = data) do
-    IO.inspect(data, label: "init at floor")
     new_data = complete_init(data, floor)
     {:noreply, %Lift{} = new_data}
   end
 
   def handle_cast({:at_floor, floor}, %Lift{state: _state} = data) do
-    IO.inspect(data, label: "at floor")
     new_data = at_floor_event(data, floor)
     {:noreply, %Lift{} = new_data}
   end
@@ -126,11 +113,9 @@ defmodule Lift do
   def handle_info(:mooving_timer, %Lift{dir: dir, state: :mooving} = data) do
     Driver.set_motor_direction(dir)
     new_data = start_timer(data)
-    IO.puts("Timer ran out")
     pid = Process.whereis(:order_server)
     Process.exit(pid, :kill)
     Process.exit(self, :normal)
-
     {:noreply, new_data}
   end
 
@@ -140,7 +125,6 @@ defmodule Lift do
     Driver.set_motor_direction(:stop)
     Driver.set_door_open_light(:on)
     Process.send_after(self(), :close_door, @door_timer)
-    IO.puts("Door open at floor #{data.floor}")
     Map.put(data, :state, :door_open)
   end
 
@@ -152,7 +136,6 @@ defmodule Lift do
       |> start_timer
 
     OrderServer.update_lift_position(data.floor, data.dir)
-    IO.puts("Mooving #{dir}")
     Driver.set_motor_direction(dir)
     new_data
   end
@@ -160,7 +143,6 @@ defmodule Lift do
   defp idle_transition(%Lift{} = data) do
     Driver.set_motor_direction(:stop)
     Driver.set_door_open_light(:off)
-    IO.puts("Ideling at floor #{data.floor}")
     Map.put(data, :state, :idle)
   end
 
@@ -211,7 +193,6 @@ defmodule Lift do
   end
 
   defp at_floor_event(%Lift{floor: floor, order: order, timer: timer} = data) do
-    IO.puts("at floor#{floor}")
     Process.cancel_timer(timer)
 
     case Order.order_at_floor?(order, floor) do

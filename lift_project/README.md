@@ -10,8 +10,8 @@ Our distribution system for orders relies on the concept of auctions and bids, w
 Handles all of input and outputs, eg. polling floor- and button sensors.
 ###### Lift
 Takes care of basic lift performance, driving the lift towards a specific order and stopping when reaching a wanted floor.
-###### Network Handler
-Performs network handling, eg. booting nodes and controlling the UDP client/server. We use UDP for discovery of new nodes.
+###### Node Discovery
+Discovers and connect to new nodes on the network and broadcast existence to the network.
 ###### Order Distribution
 Distributes orders to nodes based on a cost calculation in addition to redistributing orders given from the watchdog.
 ###### Order Server
@@ -41,22 +41,7 @@ The supervision tree implemented, is shown below.
 
 ## Dependencies
 - Elevator Server
+- Dependencies for each module are specified in the respective module documentation
 
 ## Accreditations
 Snippets of Jostein Løwer's code at his [repository](https://github.com/jostlowe/kokeplata) has been used as inspiration in some of our modules. There are also some functions from his examples which are used directly. For more details on Jostein's code, see the documentation.
-
-## Installation
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `lift_project` to your list of dependencies in `mix.exs`:
-
-```elixir
-def deps do
-  [
-    {:lift_project, "~> 0.1.0"}
-  ]
-end
-```
-
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/lift_project](https://hexdocs.pm/lift_project).

@@ -23,7 +23,7 @@ defmodule OrderServer.Cost do
     iex> OrderServer.Cost.calculate_cost([Order.new(0,:cab), Order.new(1,:hall_down)],2,:down,new_order)
     6
   """
-  @spec calculate_cost(list(any()), integer(), atom(), struct()) :: integer()
+
   def calculate_cost(orders, floor, dir, %Order{} = order) when is_list(orders) do
     order_count = length(orders)
     path = path_length(orders, {floor, dir}, order)
@@ -32,22 +32,9 @@ defmodule OrderServer.Cost do
 
   @doc """
   Finds the nearest order in the active orders. Returns nil if there are no orders.
-
-  ##Examples
-    iex> import Order
-    iex> order1 = Order.new(1,:cab)
-    iex> order2 = Order.new(2,:hall_down)
-    iex> orders = [order1,order2]
-    iex> next_order = OrderServer.Cost.next_order(orders, 0, :up)
-    iex> order1 == next_order
-    true
-
-    iex> import Order
-    iex> next_order = OrderServer.Cost.next_order([], 0, :up)
-    nil
   """
-  @spec next_order(list(any()), integer(), atom()) :: struct() | nil
-  def next_order(orders, floor, dir) when is_list(orders) do
+
+  def closest_order(orders, floor, dir) when is_list(orders) do
     Enum.min_by(
       orders,
       fn order ->
@@ -57,71 +44,47 @@ defmodule OrderServer.Cost do
     )
   end
 
-  def next_order(orders, floor, dir) when is_nil(orders) do
+  def closest_order(orders, floor, dir) when is_nil(orders) do
     nil
   end
 
   @doc """
   General algorithm:
   Find the path length from the start position to the target position along the
-  path given by orders
-
-  If there are no orders, the path is the distance between the current floor and
-  the target floor.
+  path given by orders, where possition is is given by the floor and valid direction of
+  an order
   """
-  @spec path_length(list(any()), tuple(), map()) :: integer()
-  defp path_length([], {start_floor, _dir}, %{floor: end_floor} = target_order) do
+
+  defp path_length([], {start_floor, _dir}, %{floor: end_floor} = target) do
     abs(end_floor - start_floor)
   end
 
-  @doc """
-  When the elevator is mooving up, and the order is below, or is :hall_down the
-  algorithm finds the top order and calculates the path to the order from there
-  """
-  @spec path_length(list(any()), tuple(), map()) :: integer()
   defp path_length(
          orders,
          {start_floor, :up},
-         %{floor: end_floor, button_type: button} = target_order
+         %{floor: end_floor, button_type: button} = target
        )
        when start_floor > end_floor or button == :hall_down do
     top_floor =
-      Enum.max_by(
-        [target_order | orders],
-        fn order -> order.floor end
-      )
+      Enum.max_by([target | orders], fn order -> order.floor end)
       |> Map.get(:floor)
 
-    abs(top_floor - start_floor) + path_length(orders, {top_floor, :down}, target_order)
+    abs(top_floor - start_floor) + path_length(orders, {top_floor, :down}, target)
   end
 
-  @doc """
-  When the elevator is mooving down, and the order is above, or is :hall_upthe
-  algorithm finds the lowest order and calculates the path to the order from there.
-  """
-  @spec path_length(list(any()), tuple(), map()) :: integer()
   defp path_length(
          orders,
          {start_floor, :down},
-         %{floor: end_floor, button_type: button} = target_order
+         %{floor: end_floor, button_type: button} = target
        )
        when start_floor < end_floor or button == :hall_up do
     bottom_floor =
-      Enum.min_by(
-        [target_order | orders],
-        fn order -> order.floor end
-      )
+      Enum.min_by([target | orders], fn order -> order.floor end)
       |> Map.get(:floor)
 
-    abs(bottom_floor - start_floor) +
-      path_length(orders, {bottom_floor, :up}, target_order)
+    abs(bottom_floor - start_floor) + path_length(orders, {bottom_floor, :up}, target)
   end
 
-  @doc """
-  If the above clauses does not match the distance can be calculated as the
-  distance between the target floor and the current floor
-  """
-  @spec path_length(any(), tuple(), map()) :: integer()
   defp path_length(_orders, {start_floor, _dir}, %{floor: end_floor}) do
     abs(end_floor - start_floor)
   end
